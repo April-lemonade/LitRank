@@ -1,0 +1,4 @@
+[ ] add documentation to datasets
+[ ] choosing a topic
+[ ] data cleaning and EDA
+[ ] share and discuss discoveries

@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "data explorations and wrangling"
+version = "0.1.0"
+description = "This project is to check and select the most suitable dataset for later use. Some exploration and data processing utilities are installed."
+authors = ["Wei Li <levitabris@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+pandas = "^2.2.3"
+numpy = "^2.1.2"
+jupyter = "^1.1.1"
+altair = "^5.4.1"
+zhconv = "^1.4.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+package-mode = false
