@@ -1,4 +1,4 @@
-# CCGIV idea selection
+# CCGIV Topic selection
 
 ## 1. 中国书院选址演变可视化
 
