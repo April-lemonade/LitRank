@@ -15,6 +15,8 @@ zhconv = "^1.4.3"
 duckdb = "^1.1.2"
 pyarrow = "^17.0.0"
 fastapi = {extras = ["standard"], version = "^0.115.3"}
+plotly = "^5.24.1"
+dash = "^2.18.1"
 
 
 [build-system]
