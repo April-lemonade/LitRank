@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "This project is to check and select the most suitable dataset for later use. Some exploration and data processing utilities are installed."
 authors = ["Wei Li <levitabris@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -13,7 +14,7 @@ jupyter = "^1.1.1"
 altair = "^5.4.1"
 zhconv = "^1.4.3"
 duckdb = "^1.1.2"
-pyarrow = "^17.0.0"
+pyarrow = "^18.0.0"
 fastapi = {extras = ["standard"], version = "^0.115.3"}
 plotly = "^5.24.1"
 dash = "^2.18.1"
