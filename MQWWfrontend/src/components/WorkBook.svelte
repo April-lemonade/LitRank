@@ -77,7 +77,7 @@
         {/each}
     </div>
     {#if title}
-        <div class="text-sm absolute top-0 right-0 w-auto p-2 leading-4"
+        <div class="text-sm absolute top-0 right-0 w-auto p-2 leading-4 font-semibold"
              style="z-index:99;white-space: break-spaces;height: 100%;overflow-wrap: break-word;writing-mode:vertical-rl">
             {@html title.split(/[:：﹕(,]/)[0]}
         </div>

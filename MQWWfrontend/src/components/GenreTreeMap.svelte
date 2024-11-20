@@ -34,15 +34,15 @@
         if (!treemapData) return;
 
         // 清空之前的内容
-        if (svg) svg.select("rect").remove();
-
+        if (svg) d3.select(".treemap").selectAll("*").remove();
+        // svg.selectAll("*").remove();
         // 创建 SVG 容器
         if (!svg) {
             svg = d3.select(".treemap")
-                .attr("width", width)
-                .attr("height", height);
+                .attr("width", pixelWidth)
+                .attr("height", pixelHeight * 0.9);
         }
-        svg.selectAll("*").remove();
+
 
         // 设置 Treemap 布局
         const root = d3
@@ -51,7 +51,7 @@
             .sort((a, b) => b.value - a.value);
 
         const treemapLayout = d3.treemap()
-            .size([pixelWidth, pixelHeight * 0.9])
+            .size([pixelWidth, pixelHeight * 0.6])
             .paddingInner(2);
 
         treemapLayout(root);
@@ -188,7 +188,7 @@
     .legend-container {
         display: flex;
         flex-wrap: wrap;
-        margin-top: 20px;
+        /*margin-top: 1%;*/
         gap: 10px;
     }
 

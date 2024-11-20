@@ -318,7 +318,10 @@
             selectedWorkPoet = [];
             allPoetsIDs = previousPoetIDs;
             allPoemsIDs = previousPoemIDs;
-            importanceSelected();
+
+            setTimeout(() => {
+                importanceSelected();
+            }, 0); // 使用 0 延迟确保任务放入事件循环队列，等待 DOM 更新后执行
         } else {
             currentWork = item.workID;
             currentWorkDetail = item.workDetail;
@@ -599,6 +602,7 @@
         }
     }
 
+    let scrollbarWidth = 0;
     onMount(() => {
         // dialog = document.getElementById("my_modal_3");
         fetch(`${BASE_URL}/getAllWorkID`).then(response => {
@@ -627,13 +631,22 @@
             }).then(WorkColumnStats => {
                 workColStats = WorkColumnStats
             })
+
+            const div = document.createElement("div");
+            div.style.overflow = "scroll";
+            div.style.width = "100px";
+            div.style.height = "100px";
+            document.body.appendChild(div);
+
+            scrollbarWidth = div.offsetWidth - div.clientWidth;
+            div.remove();
         })
     })
 
     $: {
         if (changing) {
-            document.getElementById("app").style.height = "100vh";
-            document.getElementById("app").style.overflow = "hidden";
+            // document.getElementById("app").style.height = "100vh";
+            // document.getElementById("app").style.overflow = "hidden";
         } else {
             document.getElementById("app").style.overflow = "";
             document.getElementById("app").style.height = "";
@@ -653,7 +666,7 @@
     </div>
     <div class="flex flex-row gap-2 w-full p-4 flex-none" style="max-width: 100vw">
         <div class="basis-1/5 border border-slate-300 flex flex-col gap-4 p-4 rounded-md flex-none"
-             style="max-width: 20%">
+             style="max-width: 19%">
             <h1 class="text-xl">Parameter View</h1>
             <!--<label class="input input-bordered flex items-center gap-2">
                 <input type="text" class="grow" placeholder="Search"/>
@@ -720,9 +733,11 @@
             <h1 class="text-xl">Distribution View</h1>
             <h2 class="text-lg">Work</h2>
             <div class="flex flex-row gap-4">
-                <ColumnStats class="shrink-0 grow-0 flex-none" width={'100%'} height={'100%'} {BASE_URL}
-                             {workColStats}></ColumnStats>
-                <div class="flex flex-row gap-4 overflow-x-auto" style="min-width: 90%;max-width: 90%">
+                <div class="flex flex-row" style="height: 100%">
+                    <ColumnStats class="shrink-0 grow-0 flex-none" width={'100%'} height={'100%'} {BASE_URL}
+                                 {workColStats}></ColumnStats>
+                </div>
+                <div class="flex flex-row gap-4 overflow-x-scroll scrollable" style="min-width: 90%;max-width: 90%">
                     {#if selectedWork}
                         {#each selectedWork as item,index}
                             <div class="shrink-0 flex flex-col {currentWork!==item.workID&&currentWork!==-1?'grayscale':''}"
@@ -834,7 +849,8 @@
                     </div>
                 </div>
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="checkbox" name="my-accordion-4" checked="{currentPoet !== -1 && currentPoem === -1}"/>
+                    <input type="checkbox" name="my-accordion-4"
+                           checked="{currentPoet !== -1 && currentPoem === -1 || currentWork===-1}"/>
                     <div class="collapse-title text-xl font-medium">Poet</div>
                     <div class="collapse-content">
                         {#if currentWork !== -1 && currentPoet === -1}
@@ -867,7 +883,7 @@
                     </div>
                 </div>
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="checkbox" name="my-accordion-4" checked="{currentPoem !== -1}"/>
+                    <input type="checkbox" name="my-accordion-4" checked="{currentPoem !== -1 || currentWork===-1}"/>
                     <div class="collapse-title text-xl font-medium">Poem</div>
                     <div class="collapse-content">
                         {#if currentPoem === -1}
@@ -934,5 +950,10 @@
         height: 100vh;
         top: 0;
         left: 0;
+    }
+
+    .scrollable {
+        overflow-x: scroll;
+        box-sizing: border-box;
     }
 </style>

@@ -8,6 +8,8 @@
 
     export let selectWorkType;
 
+    let pixelWidth, pixelHeight;
+
     const color = d3.scaleOrdinal([
         "#A7C7E7", // 淡蓝色
         "#6AABD2", // 典雅蓝
@@ -57,7 +59,7 @@
         if (selectWorkType) selectWorkType({data});
     }
 </script>
-<div bind:clientHeight={height} bind:clientWidth={width} style="width: {width};height:{height}"
+<div bind:clientHeight={height} bind:clientWidth={width} style="width: {pixelWidth};height:{pixelHeight}"
      class="flex flex-col flex-none grow-0">
     <h3 class="text-lg">Work type Distribution</h3>
     <div class="flex flex-row">
@@ -91,7 +93,7 @@
 
 <style>
     .tooltip {
-        font-size: 12px;
+        font-size: 10px;
         box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
     }
 </style>
