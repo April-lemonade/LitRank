@@ -13,6 +13,7 @@
     import GenreTreeMap from "./components/GenreTreeMap.svelte";
     import PoetWork from "./components/PoetWork.svelte";
     import PoemBlock from "./components/PoemBlock.svelte";
+    import MainCharts from "./components/MainCharts.svelte";
 
     let width = window.innerWidth;
     let height = window.innerHeight;
@@ -54,18 +55,18 @@
     }
 
     let workPara = [
-        {para: 'Inscription authors weight', weight: 1},
-        {para: 'Preface authors weight', weight: 4},
-        {para: 'Colophon authors weight', weight: 3},
-        {para: 'Collected works weight', weight: 1}
+        {para: 'Primary Author', weight: 6},
+        {para: 'Secondary Author', weight: 3},
+        {para: 'Editor', weight: 1},
+        {para: 'none', weight: 0}
     ];
 
     let poetPara = [
-        {para: 'Works included weight', weight: 5},
-        {para: 'Portrait mentions weight', weight: 1},
-        {para: 'Portrait authored weight', weight: 3},
-        {para: 'Response received weight', weight: 4},
-        {para: 'Discussed weight', weight: 2}
+        {para: 'Work Inclusion Count', weight: 5},
+        {para: 'Biography Inclusion Count', weight: 5},
+        {para: 'Poetry Commentary Count', weight: 5},
+        {para: 'Response received weight', weight: 0},
+        {para: 'Discussed weight', weight: 0}
     ];
 
     let poemPara = [
@@ -73,8 +74,8 @@
         {para: 'Poet popularity weight', weight: 1}
     ];
 
-    const workReferenceField = ['PubPlaceHZ', 'PubNameHZ', 'DateCycleHZ', 'DateEmperorHZ', 'DateDynastyHZ']
-    const poetReferenceField = ['MainWorks', 'PresentdayEquivalent', 'LifeSpan', 'StartYear', 'EndYear', 'EthnicGroup']
+    const workReferenceField = ['DateCycleHZ', 'DateEmperorHZ', 'DateDynastyHZ']
+    const poetReferenceField = ['MainWorks', 'LifeSpan', 'StartYear', 'EndYear', 'EthnicGroup']
 
     let currentWork = -1;
     let currentPoet = -1;
@@ -113,43 +114,65 @@
         let poetWeights = poetPara.flatMap(entry => entry.percentage)
         let poemWeights = poemPara.flatMap(entry => entry.percentage)
 
-        Promise.all([
-            fetch(`${BASE_URL}/workImportance/${weights.join(',')}`)
-                .then(response => response.json())  // 解析JSON格式的响应体
-                .then(result => {
-                    rank = result.data;  // 将结果赋值给 rank
-                })
-                .catch(error => {
-                    console.error('Error fetching work importance data:', error);
-                }),
-            fetch(`${BASE_URL}/poetImportance/${poetWeights.join(',')}`)
-                .then(response => response.json())  // 解析JSON格式的响应体
-                .then(result => {
-                    poetRank = result.data;  // 将结果赋值给 poetRank
-                })
-                .catch(error => {
-                    console.error('Error fetching poet importance data:', error);
-                })
-        ])
-            .then(() => {
-                // 当 `workImportance` 和 `poetImportance` 都完成时，进行 `poemImportance` 的请求
-                return fetch(`${BASE_URL}/poemImportance/${poemWeights.join(',')}`)
-                    .then(response => response.json())
+        fetch(`${BASE_URL}/poetImportanceNew/${poetWeights.join(',')}`)
+            .then(response => response.json())  // 解析JSON格式的响应体
+            .then(result => {
+                poetRank = result.data;  // 将结果赋值给 poetRank
+                console.log("poetRank", poetRank[1])
+                fetch(`${BASE_URL}/workImportanceNew/${weights.join(',')}`)
+                    .then(response => response.json())  // 解析JSON格式的响应体
                     .then(result => {
-                        poemRank = result.data;
-                        // console.log("poemRank", poemRank);
+                        rank = result.data;  // 将结果赋值给 rank
+                        console.log("workRank", rank);
+                        importanceSelected();
                     })
                     .catch(error => {
-                        console.error('Error fetching poem importance data:', error);
-                    });
-            })
-            .then(() => {
-                // 所有请求都完成后调用 `importanceSelected`
-                importanceSelected();
+                        console.error('Error fetching work importance data:', error);
+                    })
             })
             .catch(error => {
-                console.error('Error in fetching data:', error);
-            });
+                console.error('Error fetching poet importance data:', error);
+            })
+
+        /* Promise.all([
+             fetch(`${BASE_URL}/workImportanceNew/${weights.join(',')}`)
+                 .then(response => response.json())  // 解析JSON格式的响应体
+                 .then(result => {
+                     rank = result.data;  // 将结果赋值给 rank
+                     console.log("rank", rank)
+                 })
+                 .catch(error => {
+                     console.error('Error fetching work importance data:', error);
+                 }),
+             fetch(`${BASE_URL}/poetImportanceNew/${poetWeights.join(',')}`)
+                 .then(response => response.json())  // 解析JSON格式的响应体
+                 .then(result => {
+                     poetRank = result.data;  // 将结果赋值给 poetRank
+                     console.log("poetRank", poetRank)
+                 })
+                 .catch(error => {
+                     console.error('Error fetching poet importance data:', error);
+                 })
+         ])
+             .then(() => {
+                 // 当 `workImportance` 和 `poetImportance` 都完成时，进行 `poemImportance` 的请求
+                 /!* return fetch(`${BASE_URL}/poemImportance/${poemWeights.join(',')}`)
+                      .then(response => response.json())
+                      .then(result => {
+                          poemRank = result.data;
+                          // console.log("poemRank", poemRank);
+                      })
+                      .catch(error => {
+                          console.error('Error fetching poem importance data:', error);
+                      });*!/
+             })
+             .then(() => {
+                 // 所有请求都完成后调用 `importanceSelected`
+                 importanceSelected();
+             })
+             .catch(error => {
+                 console.error('Error in fetching data:', error);
+             });*/
     }
 
     async function importanceSelected() {
@@ -297,6 +320,104 @@
     function showLoading() {
         changing = true;
         console.log('Loading set to true');
+    }
+
+    let displayPoems = [];
+    let displayPoemsDetail = {};
+
+    function selectContent(data) {
+        clear = false;
+        console.log('data', data);
+        currentPoet = data.poet;
+        currentWork = data.work;
+        if (currentWork !== -1) {
+            fetch(`${BASE_URL}/getworkpoemsdetail/${currentWork}`)
+                .then(response => response.json())
+                .then(results => {
+                    displayPoems = results
+                    console.log('displayPoems', displayPoems)
+                })
+            currentWorkDetail = rank.find(item => item.workID === currentWork)?.workDetail;
+            currentWorkDetail = Object.fromEntries(
+                Object.entries(currentWorkDetail).sort(([keyA, valueA], [keyB, valueB]) => {
+                    const isUnknownA = valueA === "unknown";
+                    const isUnknownB = valueB === "unknown";
+
+                    if (isUnknownA && isUnknownB) {
+                        // 如果两个都是unknown，检查它们是否在列表中，并根据列表排序
+                        const indexA = workReferenceField.indexOf(keyA);
+                        const indexB = workReferenceField.indexOf(keyB);
+
+                        // 判断是否在列表中
+                        const isInListA = indexA !== -1;
+                        const isInListB = indexB !== -1;
+
+                        if (isInListA && isInListB) {
+                            return indexA - indexB;
+                        } else if (isInListA) {
+                            return -1; // A在列表中，B不在，A排前
+                        } else if (isInListB) {
+                            return 1;  // B在列表中，A不在，B排前
+                        }
+                    } else if (isUnknownA && !isUnknownB) {
+                        return -1; // A是unknown且不在列表中，B不是unknown，A排后（因为B可能在列表中）
+                    } else if (!isUnknownA && isUnknownB) {
+                        return 1;  // B是unknown且不在列表中，A不是unknown，B排后（因为A可能在列表中）
+                    }
+
+                    // 如果都不是unknown或不需要特别排序，保持原始顺序
+                    return 0;
+                })
+            );
+        } else {
+            currentWorkDetail = {};
+        }
+        if (currentPoet === -1) {
+            currentPoetDetail = {};
+        } else {
+            fetch(`${BASE_URL}/getpoetpoemsdetail/${currentPoet}`)
+                .then(response => response.json())
+                .then(results => {
+                    displayPoems = results;
+                    console.log('displayPoems', displayPoems)
+                })
+            currentPoetDetail = poetRank.find(item => item.poetID === currentPoet)?.poetDetail;
+            currentPoetDetail = Object.fromEntries(
+                Object.entries(currentPoetDetail).sort(([keyA, valueA], [keyB, valueB]) => {
+                    const isUnknownA = valueA === "unknown";
+                    const isUnknownB = valueB === "unknown";
+
+                    if (isUnknownA && isUnknownB) {
+                        // 如果两个都是unknown，检查它们是否在列表中，并根据列表排序
+                        const indexA = poetReferenceField.indexOf(keyA);
+                        const indexB = poetReferenceField.indexOf(keyB);
+
+                        // 判断是否在列表中
+                        const isInListA = indexA !== -1;
+                        const isInListB = indexB !== -1;
+
+                        if (isInListA && isInListB) {
+                            return indexA - indexB;
+                        } else if (isInListA) {
+                            return -1; // A在列表中，B不在，A排前
+                        } else if (isInListB) {
+                            return 1;  // B在列表中，A不在，B排前
+                        }
+                    } else if (isUnknownA && !isUnknownB) {
+                        return -1; // A是unknown且不在列表中，B不是unknown，A排后（因为B可能在列表中）
+                    } else if (!isUnknownA && isUnknownB) {
+                        return 1;  // B是unknown且不在列表中，A不是unknown，B排后（因为A可能在列表中）
+                    }
+
+                    // 如果都不是unknown或不需要特别排序，保持原始顺序
+                    return 0;
+                })
+            );
+        }
+        if (currentPoet === -1 && currentWork === -1) {
+            displayPoems = [];
+        }
+
     }
 
     function selectBook(item) {
@@ -522,12 +643,12 @@
                                     value: data.PubNameHZ
                                 }
                             })
-                        console.log(extractedData)
+                        // console.log(extractedData)
                         relatedContent = {
                             title: 'Works included same authors',
                             content: extractedData
                         }
-                        console.log(relatedContent)
+                        // console.log(relatedContent)
                     })
             }
         } else if (type === 'poet') {
@@ -599,6 +720,51 @@
                         }
                     })
             }
+        } else if (type === 'poem') {
+            fetch(`${BASE_URL}/poem/${label.poemID}`)
+                .then(response => response.json())
+                .then(results => {
+                    displayPoemsDetail = results
+                    console.log(displayPoemsDetail)
+                    let extractedData = Object.entries(displayPoemsDetail[0])
+                        .filter(([key, value]) => {
+                            let shouldInclude = true;
+
+                            // 条件 1: 如果是 TunePatternSubtitle 和 TunePatternSubtitlePY，但 GenrePY 不为 ci 或 qu，则排除
+                            if ((key === "TunePatternSubtitle" || key === "TunePatternSubtitlePY") && displayPoemsDetail[0].GenrePY !== "ci" && displayPoemsDetail[0].GenrePY !== "qu") {
+                                shouldInclude = false;
+                            }
+
+                            // 条件 2: 如果是 Form，但 GenrePY 不为 shi，则排除
+                            if (key === "Form" && displayPoemsDetail[0].GenrePY !== "shi") {
+                                shouldInclude = false;
+                            }
+
+                            // 条件 3: poetassubjectID 和 changheshuxinpoetID 值为 unknown 时排除
+                            if ((key === "poetassubjectID" || key === "changheshuxinpoetID") && value === "unknown") {
+                                console.log("111");
+                                shouldInclude = false;
+                            }
+
+                            // 条件 4: 永远排除 tempID
+                            if (key === "tempID") {
+                                shouldInclude = false;
+                            }
+
+                            return shouldInclude;
+                        })
+                        .map(([key, value]) => ({
+                            label: key,
+                            value: value || "unknown" // 如果值为空，显示为 'unknown'
+                        }));
+
+                    dialogTitle = label.poemTitle;
+
+                    relatedContent = {
+                        title: "",
+                        content: extractedData
+                    }
+                })
         }
     }
 
@@ -626,11 +792,12 @@
             previousPoemIDs = Array.from(uniquePoemIDs);
             // console.log(allPoemsIDs)
             // importanceCal()
-            fetch(`${BASE_URL}/getWorkColumnStats/${allWorkIDs.toString()}`).then(response => {
+
+            /*fetch(`${BASE_URL}/getWorkColumnStats/${allWorkIDs.toString()}`).then(response => {
                 return response.json();
             }).then(WorkColumnStats => {
                 workColStats = WorkColumnStats
-            })
+            })*/
 
             const div = document.createElement("div");
             div.style.overflow = "scroll";
@@ -653,10 +820,42 @@
         }
     }
 
+    let clear = false;
+
+    function clearSelection() {
+        if (currentWork !== -1 || currentPoet !== -1) {
+            clear = true;
+            currentWork = -1;
+            currentPoet = -1;
+            displayPoems = [];
+            displayPoemsDetail = {};
+        }
+
+    }
+
 </script>
 
 <div bind:clientWidth={width} class="w-full flex flex-col flex-none grow-0 shrink-0 relative"
      style="max-width: 100vw">
+    <dialog id="my_modal_3" class="modal">
+        <div class="modal-box">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
+                    ✕
+                </button>
+            </form>
+            <h3 class="text-lg font-bold">{dialogTitle}</h3>
+            {#if relatedContent}
+                <div>{relatedContent.title}</div>
+                {#each relatedContent.content as item}
+                    <p class="py-4">{item.label} : {item.value}</p>
+                {/each}
+            {/if}
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
     <div style="display: {changing?'flex':'none'};width:100vw;height:100vh;position:fixed;left:0;top:0;z-index:999;"
          class="bg-gray-300/50 mask" id="mymask">
         <span class="loading loading-spinner loading-lg absolute left-1/2" style="top: 50vh"></span>
@@ -681,39 +880,41 @@
                             clip-rule="evenodd"/>
                 </svg>
             </label>-->
-            <h2 class="text-lg">Time Period</h2>
+
+            <h2 class="text-lg">Relative Contributions</h2>
+            <!--<h2 class="text-lg">Time Period</h2>
             <div class="barSelect">
                 <WorkYearDistribution width={'50%'} height={'70%'} {BASE_URL} onBrushed={handleBrushed} {changing}/>
             </div>
-            <h2 class="text-lg">Popularity Parameters</h2>
+            <h2 class="text-lg">Popularity Parameters</h2>-->
             <h3>Work</h3>
-            <div style="height: 15vh" class="w-full flex">
-                <WorkBook {workPara} width={'30%'} height={'100%'} counts={[2,2,2,2]}></WorkBook>
-            </div>
+            <!--            <div style="height: 15vh" class="w-full flex">
+                            <WorkBook {workPara} width={'30%'} height={'100%'} counts={[2,2,2,2]}></WorkBook>
+                        </div>-->
 
-            {#each workPara as item, index}
+            {#each workPara.slice(0, 3) as item, index}
                 <div class="text-sm flex justify-between">
                     <div>{item.para} </div>
                     <div>{item.weight}</div>
                 </div>
-                <input type="range" min="0" max="4" bind:value={item.weight}
-                       class="range range-xs  {changing?'range-secondary':'range-primary'}" step="1"
+                <input type="range" min="1" max="10" bind:value={item.weight}
+                       class="range range-xs  {changing?'range-secondary':''}" step="1"
                        disabled={changing}/>
             {/each}
             <h3>Poet</h3>
-            <div style="height: 10vh" class="w-full flex">
+            <!--<div style="height: 10vh" class="w-full flex">
                 <PoetBlock {poetPara} width={'100%'} height={'100%'} counts={[1,1,1,1,1]}></PoetBlock>
-            </div>
-            {#each poetPara as item, index}
+            </div>-->
+            {#each poetPara.slice(0, 3) as item, index}
                 <div class="text-sm flex justify-between">
                     <div>{item.para} </div>
                     <div>{item.weight}</div>
                 </div>
-                <input type="range" min="0" max="5" bind:value={item.weight}
-                       class="range range-xs {changing?'range-secondary':'range-primary'}" step="1"
+                <input type="range" min="1" max="10" bind:value={item.weight}
+                       class="range range-xs {changing?'range-secondary':''}" step="1"
                        disabled={changing}/>
             {/each}
-            <h3>Poem</h3>
+            <!--<h3>Poem</h3>
             <div style="height: 10vh" class="w-full flex">
                 <PoemBlock {poemPara} width={'100%'} height={'100%'}
                            counts={[0.5,0.5]} poemAbsence="{[1,1,1,1,1,1]}"></PoemBlock>
@@ -726,10 +927,11 @@
                 <input type="range" min="0" max="2" bind:value={item.weight}
                        class="range range-xs {changing?'range-secondary':'range-primary'}" step="1"
                        disabled={changing}/>
-            {/each}
+            {/each}-->
         </div>
         <div class="flex-none basis-3/5 max-w-[calc(60%)] border border-slate-300 p-4 rounded-md flex flex-col gap-4 grow-0"
              style="max-width: 60%">
+            <!--
             <h1 class="text-xl">Distribution View</h1>
             <h2 class="text-lg">Work</h2>
             <div class="flex flex-row gap-4">
@@ -752,7 +954,7 @@
               ]} title="{item.workDetail?item.workDetail.TitleHZ:'unknown'}"
                                           workId="{parseInt(item.workID)}"
                                           workAbsence="{item.workDetail}"></WorkBook>
-                                <!--                                <div class="shrink-0">{item.workID}</div>-->
+                                &lt;!&ndash;                                <div class="shrink-0">{item.workID}</div>&ndash;&gt;
                             </div>
 
                         {/each}
@@ -773,7 +975,7 @@
                                    class="flex-none grow-0 shrink-0 ">
                         </PoetBlock>
                     </div>
-                    <!--                    <div>{item.poetID}</div>-->
+                    &lt;!&ndash;                    <div>{item.poetID}</div>&ndash;&gt;
                 {/each}
             </div>
             <h2 class="text-lg">Poem</h2>
@@ -783,76 +985,72 @@
                     <div>No Records</div>
                 {:else }
                     {#each selectedPoem as item}
-                        <!--<div class="flex flex-none shrink-0 grow-0" style="width: 10vw;height: 10vh"
+                        &lt;!&ndash;<div class="flex flex-none shrink-0 grow-0" style="width: 10vw;height: 10vh"
                              on:click={() => selectPoet(item)}>
                             <PoetBlock {poetPara} width={'100%'} height={'100%'}
                                        counts={[parseFloat(item.poetCount.participateCalc),parseFloat(item.poetCount.writeXZCalc),parseFloat(item.poetCount.inXZCalc),parseFloat(item.poetCount.bediscussedCalc),parseFloat(item.poetCount.changheCalc)]}
                                        poetAbsence="{item.poetDetail}"
                                        class="flex-none grow-0 shrink-0 {currentPoet!==item.poetID&&currentPoet!==-1?'grayscale':''}">
                             </PoetBlock>
-                        </div>-->
+                        </div>&ndash;&gt;
                         <div class="flex flex-none shrink-0 grow-0 justify-center {currentPoem!==item.poemID&&currentPoem!==-1?'grayscale':''}"
                              style="width: 5vw;height: 10vh" on:click={() => selectPoem(item)}>
                             <PoemBlock {poemPara} width={'100%'} height={'100%'}
                                        counts={[parseFloat(item.poemCount.workImportance),parseFloat(item.poemCount.poetImportance)]}
                                        poemAbsence="{item.poemDetail}"></PoemBlock>
                         </div>
-                        <!--                        <div>{item.poemID}</div>-->
+                        &lt;!&ndash;                        <div>{item.poemID}</div>&ndash;&gt;
                     {/each}
                 {/if}
             </div>
+            -->
+            <div class="flex justify-between">
+                <h1 class="text-xl">Distribution View</h1>
+                <button class="btn btn-xs" onclick={clearSelection}>clear</button>
+            </div>
+
+            <div style="height: 100%">
+                <MainCharts {poetRank} {rank} selectContent={selectContent} {clear}/>
+            </div>
+
         </div>
         <div class="basis-1/5 border border-slate-300 p-4 rounded-md flex flex-none flex-col grow-0 shrink-0 gap-4"
-             style="max-width: 20%">
+             style="max-width: 20%;min-height: 90vh;overflow: scroll;max-height: 100vh">
             <h1 class="text-xl">Inspection View</h1>
 
             <div class="join join-vertical w-full">
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="checkbox" name="my-accordion-4" checked="{currentWork===-1}"/>
+                    <input type="radio" name="my-accordion-4" checked="{currentWork===-1}"/>
                     <div class="collapse-title text-xl font-medium">Work</div>
-                    <div class="collapse-content">
-                        {#if currentWork === -1}
-                            <div style="min-height: 20vh">
+                    <div class="collapse-content" style="max-height: 60vh;overflow: scroll;min-height: 0vh">
+                        {#if currentWork === -1 && currentPoet === -1}
+                            <div style="min-height: 20vh;">
                                 <WorkDefaultInspection width={'100%'} height={'100%'} {pieData}></WorkDefaultInspection>
                             </div>
-                        {:else }
+                        {:else if currentWork !== -1 && currentPoet === -1 }
                             <div class="flex flex-col gap-2" style="min-height: 20vh">
                                 {#each Object.entries(currentWorkDetail) as [label, value]}
                                     {#if value === 'unknown' && workReferenceField.includes(label)}
                                         <button class="btn"
-                                                on:click={()=>selectField(label,'work')}>{label}：{value}</button>
+                                                onclick={()=>selectField(label,'work')}>{label}：{value}</button>
                                     {:else}
                                         <div>{label}：{value}</div>
                                     {/if}
                                 {/each}
-                                <dialog id="my_modal_3" class="modal">
-                                    <div class="modal-box">
-                                        <form method="dialog">
-                                            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
-                                                ✕
-                                            </button>
-                                        </form>
-                                        <h3 class="text-lg font-bold">{dialogTitle}</h3>
-                                        {#if relatedContent}
-                                            <div>{relatedContent.title}</div>
-                                            {#each relatedContent.content as item}
-                                                <p class="py-4">{item.label} : {item.value}</p>
-                                            {/each}
-                                        {/if}
-                                    </div>
-                                    <form method="dialog" class="modal-backdrop">
-                                        <button>close</button>
-                                    </form>
-                                </dialog>
+
+                            </div>
+                        {:else}
+                            <div style="min-height: 20vh">
+                                <PoetWork width={'100%'} height={'100%'} poetID={currentPoet}></PoetWork>
                             </div>
                         {/if}
                     </div>
                 </div>
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="checkbox" name="my-accordion-4"
+                    <input type="radio" name="my-accordion-4"
                            checked="{currentPoet !== -1 && currentPoem === -1 || currentWork===-1}"/>
                     <div class="collapse-title text-xl font-medium">Poet</div>
-                    <div class="collapse-content">
+                    <div class="collapse-content" style="max-height: 60vh;overflow: scroll;min-height: 0vh">
                         {#if currentWork !== -1 && currentPoet === -1}
                             <div style="min-height: 20vh">
                                 <PoetDefaultInspection width={'100%'} height={'100%'}
@@ -867,34 +1065,57 @@
                         {#if currentPoet !== -1}
                             <div class="flex flex-col gap-2">
                                 {#each Object.entries(currentPoetDetail) as [label, value]}
-                                    {#if value === 'unknown' && poetReferenceField.includes(label)}
-                                        <button class="btn"
-                                                on:click={()=>selectField(label,'poet')}>{label}：{value}</button>
-                                    {:else}
-                                        <div>{label}：{value}</div>
+                                    {#if label !== 'fullRegion' && label !== 'ParentRegionName'}
+                                        {#if value === 'unknown' && poetReferenceField.includes(label)}
+                                            <button class="btn"
+                                                    onclick={()=>selectField(label,'poet')}>{label}：{value}</button>
+                                        {:else}
+                                            <div>{label}：{value}</div>
+                                        {/if}
                                     {/if}
                                 {/each}
-                                <div style="min-height: 20vh">
-                                    <PoetWork width={'100%'} height={'100%'} poetID={currentPoet}></PoetWork>
-                                </div>
                             </div>
                         {/if}
 
                     </div>
                 </div>
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="checkbox" name="my-accordion-4" checked="{currentPoem !== -1 || currentWork===-1}"/>
+                    <input type="radio" name="my-accordion-4"
+                           checked="{currentPoem !== -1 || currentWork===-1}"/>
                     <div class="collapse-title text-xl font-medium">Poem</div>
-                    <div class="collapse-content">
-                        {#if currentPoem === -1}
+                    <div class="collapse-content"
+                         style="max-height: 60vh;overflow: scroll;min-height: 0vh">
+                        {#if displayPoems.length === 0}
                             <div style="min-height: 20vh;max-height: 50vh">
                                 <GenreTreeMap width={'100%'} height={'100%'}
                                               {allPoemsIDs}></GenreTreeMap>
                             </div>
                         {:else}
-                            {#each Object.entries(currentPoemDetail) as [label, value]}
-                                <div>{label}：{value}</div>
-                            {/each}
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #ddd;">
+                                <thead>
+                                <tr>
+                                    <th style="border: 1px solid #ddd; padding: 5px;">Work</th>
+                                    <th style="border: 1px solid #ddd; padding: 5px;">Poet</th>
+                                    <th style="border: 1px solid #ddd; padding: 5px;">Poem</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {#each displayPoems as poem}
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; padding: 5px;">
+                                            {poem.workTitle.split(/[:：﹕(,]/)[0].trim()}
+                                        </td>
+                                        <td style="border: 1px solid #ddd; padding: 5px;">
+                                            {poem.NameHZ}
+                                        </td>
+                                        <td style="border: 1px solid #ddd; padding: 5px;cursor: pointer;color: steelblue;text-decoration: underline;"
+                                            onclick={()=>selectField(poem,'poem')}>
+                                            {poem.poemTitle}
+                                        </td>
+                                    </tr>
+                                {/each}
+                                </tbody>
+                            </table>
                         {/if}
                     </div>
                 </div>
@@ -955,5 +1176,9 @@
     .scrollable {
         overflow-x: scroll;
         box-sizing: border-box;
+    }
+
+    .range-primary {
+        --range-shdw: 'black' !important;
     }
 </style>

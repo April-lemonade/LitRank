@@ -86,14 +86,23 @@
             svg = d3.select('#relation-graph')
                 .attr('width', width)
                 .attr('height', pixelHeight * 0.5)
-                .call(d3.zoom().on('zoom', (event) => {
-                    svg.select('g').attr('transform', event.transform);
-                }));
+            // .call(d3.zoom().on('zoom', (event) => {
+            //     svg.select('g').attr('transform', event.transform);
+            // }));
+
+            const zoomBehavior = d3.zoom()
+                .on('zoom', (event) => {
+                    console.log(event.transform)
+                    svg.select('g').attr('transform', event.transform); // 应用缩放
+                });
+
+            // 应用缩放行为到 SVG
+            svg.call(zoomBehavior);
         } else {
             svg.selectAll('*').remove();
         }
 
-        const container = svg.append('g');
+        const container = svg.append('g').attr("transform", 'translate(45,55) scale(0.6)');
 
         // 按 role 对 links 分组
         const groupedLinks = d3.group(links, d => d.role);

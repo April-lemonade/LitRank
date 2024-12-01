@@ -9,11 +9,12 @@
     let links = [];
     let pixelWidth, pixelHeight;
     let svg, tooltip;
+    let works;
 
     // 获取数据
     async function fetchWorkData() {
         const response = await fetch(`${BASE_URL}/getpoetwork/${poetID}`);
-        const works = await response.json();
+        works = await response.json();
         console.log(works)
         // 构建节点和连线
         nodes = [{id: poetID, name: `Poet ${poetID}`, group: "poet"}];
@@ -262,6 +263,26 @@
 </script>
 
 <div bind:clientWidth={pixelWidth} bind:clientHeight={pixelHeight} style="width: {width}; height: {height};">
-    <svg id="relation-graph" style="border: 1px solid #ddd;"></svg>
-    <div id="legend1"></div>
+    <!--    <svg id="relation-graph" style="border: 1px solid #ddd;"></svg>-->
+    <!--    <div id="legend1"></div>-->
+    <table style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #ddd;">
+        <thead>
+        <tr>
+            <th style="border: 1px solid #ddd; padding: 8px;">Title</th>
+            <th style="border: 1px solid #ddd; padding: 8px;">Role</th>
+        </tr>
+        </thead>
+        <tbody>
+        {#each works as work}
+            <tr>
+                <td style="border: 1px solid #ddd; padding: 8px;">
+                    {work.TitleHZ.split(/[:：﹕(,]/)[0].trim()}
+                </td>
+                <td style="border: 1px solid #ddd; padding: 8px;">
+                    {work.role || 'N/A'}
+                </td>
+            </tr>
+        {/each}
+        </tbody>
+    </table>
 </div>

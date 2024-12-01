@@ -5,6 +5,7 @@ from fastapi import FastAPI, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from zhconv import convert
+import re  # 引入正则表达式模块
 
 app = FastAPI()
 origins = [
@@ -164,7 +165,7 @@ def get_work_full(workID: str):
 
 @app.get("/getworkpoems/{workID}", summary='获得集中的品ID')
 def get_work_poem(workID: str, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
-    print(workID)
+    # print(workID)
     query = f'''
             SELECT DISTINCT workpoemlinks.poemID
             FROM workpoemlinks
@@ -183,25 +184,6 @@ def get_poem_full(poemID: str):
              'workInfo': get_work_details(get_poem_work(poemID))}
     return final
 
-
-# @app.get("/getworkpoetsid/{workID}", summary="获取集中收录作品的作者ID,按收录或者参与编辑或者完整")
-# def get_work_poets(workID: str, role: str = Query('all', description="included/editing，为空默认为all"),
-#                    db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
-#     # print("Requested workID:", workID)
-#     roleType = allAuthorsRole
-#     if role == 'included': roleType = includedAuthorsRole
-#     if role == 'editing': roleType = editingAuthorsRole
-#
-#     query = f'''
-#         SELECT poetID, role
-#         FROM workpoetlinks
-#         WHERE workID = ? AND role In {roleType}
-#
-#     '''
-#     result = db_connection.query(query, params=(workID,)).df()
-#     result_dict = result.to_dict(orient='records')
-#     # result_list = result['poetID'].tolist()
-#     return result_dict
 
 def get_work_poets_inner(workID: str):
     # print("Requested workID:", workID)
@@ -235,7 +217,7 @@ def get_work_poets(workID):
     result = db_connection.query(query).df()
     # result_dict = result.to_dict(orient='records')
     result_list = result['poetID'].tolist()
-    print(result_list)
+    # print(result_list)
     return result_list
 
 
@@ -355,6 +337,69 @@ def safe_float(value, default=0.0):
 
 
 workRank = pd.DataFrame()
+workRankNew = pd.DataFrame()
+
+
+@app.get('/workImportanceNew/{workPara}')
+def calWorkImportanceNew(workPara, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
+    global poetRankNew
+    workPara = workPara.split(',')
+    mainWeight = float(workPara[0])
+    secondWeight = float(workPara[1])
+    editorWeight = float(workPara[2])
+
+    role_weights = {
+        '主要作者': mainWeight, '作者': mainWeight, '其他作者': mainWeight,
+        '題辭': secondWeight, '序作者': secondWeight, '跋作者': secondWeight, '附记作者': secondWeight,
+        '凡例作者': secondWeight, '墓志詺作者': secondWeight, '輓詞作者': secondWeight, '傳記作者': secondWeight,
+        '像赞作者': secondWeight, '年譜作者': secondWeight,
+        '编輯': editorWeight, '校閲': editorWeight, '校注者': editorWeight
+    }
+    workpoet = workpoetlinks.copy()
+    workpoet['RoleWeight'] = workpoet['role'].map(role_weights)
+    workpoet = workpoet.merge(poetRankNew, on='poetID', how='outer')
+    workpoet['WorkImportance'] = workpoet['RoleWeight'] * workpoet['totalWeight']
+    work_importance_total = workpoet.groupby('workID')['WorkImportance'].sum()
+    max_importance = work_importance_total.max()
+    normalized_importance = work_importance_total / max_importance
+    normalized_importance_df = normalized_importance.reset_index()
+    raw_importance = normalized_importance_df.copy()
+    normalized_importance_df = normalized_importance_df.merge(work, on='workID', how='outer')[
+        ['workID', 'TitleHZ', 'PubStartYear', 'WorkImportance']]
+    normalized_importance_df['WorkImportance'] = np.log(normalized_importance_df['WorkImportance'] + 0.01)
+
+    normalized_importance_sorted = normalized_importance_df.sort_values('WorkImportance', ascending=False)
+    normalized_importance_sorted.set_index('workID', inplace=True)
+
+    global workRankNew  # 确保 workRank 是全局变量
+
+    workRankNew = normalized_importance_df.copy()
+
+    columns_to_exclude = ['Summary', 'UniformTitle', 'VariantTitle']
+    columns_to_exclude += [col for col in work.columns if 'PY' in col]
+    columns_to_check = [col for col in work.columns if col not in columns_to_exclude]
+    columns_to_select = ', '.join(columns_to_check)
+
+    work.fillna('unknown', inplace=True)
+    workDetailsQuery = f"SELECT {columns_to_select} FROM work WHERE workID IN ({','.join(map(str, normalized_importance_sorted.index.tolist()))})"
+    workDetails = db_connection.query(workDetailsQuery).df().set_index('workID')
+
+    # 整合结果
+    combined_results = []
+    for workID, row in normalized_importance_sorted.iterrows():
+        work_detail = {}
+        if workID in workDetails.index:
+            work_detail = workDetails.loc[workID].to_dict()
+
+        combined = {
+            'workID': int(workID),
+            'workCount': row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+            'workDetail': work_detail
+        }
+        combined_results.append(combined)
+        # print(combined_results)
+    return JSONResponse(content={"data": combined_results})
+    # return ji_min_max_sorted.to_json(orient='index')
 
 
 @app.get('/workImportance/{workPara}', response_class=JSONResponse)
@@ -505,8 +550,8 @@ def getWorkColumnStats(allWorkIDs, db_connection: duckdb.DuckDBPyConnection = De
     result = db_connection.query(query).df()
 
     # 输出每列非 'unknown' 的数量（可选）
-    for col, count in zip(columns_to_check, result.iloc[0]):
-        print(f"Non-'unknown' count for {col}: {count}")
+    # for col, count in zip(columns_to_check, result.iloc[0]):
+    #     print(f"Non-'unknown' count for {col}: {count}")
 
     # 转换结果为字典列表格式并返回
     result_dict = result.to_dict(orient='records')
@@ -514,6 +559,155 @@ def getWorkColumnStats(allWorkIDs, db_connection: duckdb.DuckDBPyConnection = De
 
 
 poetRank = pd.DataFrame()
+poetRankNew = pd.DataFrame()
+
+
+@app.get('/poetImportanceNew/{poetPara}')
+def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
+    poetPara = poetPara.split(',')
+
+    PoetParticipateWork = db_connection.query(
+        "SELECT poetID, COUNT(DISTINCT workID) AS participate_count FROM workpoetlinks GROUP BY poetID ORDER BY "
+        "participate_count DESC").df()
+
+    bexiangzan = db_connection.query(
+        '''SELECT p.poetassubjectID AS poetID, COUNT(DISTINCT p.poemID) AS bexiangzansubjectCount
+        FROM poem p
+        WHERE p.GenreHZ IN ('文﹕年譜', '文﹕略傳', '文﹕傳') AND p.poetassubjectID != 0
+            AND p.poetassubjectID IN (
+                SELECT DISTINCT poetID
+                FROM workpoetlinks
+            )
+        GROUP BY p.poetassubjectID;''').df()
+
+    discussed = db_connection.query(
+        '''SELECT p.poetassubjectID AS poetID, COUNT(DISTINCT p.poemID) AS discussedCount
+        FROM poem p
+        INNER JOIN workpoetlinks w ON p.poetassubjectID = w.poetID
+        WHERE p.GenreHZ IN ('文﹕詩話', '文﹕詞話', '文﹕案語') AND p.poetassubjectID != 0
+        GROUP BY p.poetassubjectID;''').df()
+
+    PoetParticipateWork.set_index('poetID', inplace=True)
+    # xiangzanauthor.set_index('poetID', inplace=True)
+    bexiangzan.set_index('poetID', inplace=True)
+    discussed.set_index('poetID', inplace=True)
+    # changheshi.set_index('poetID', inplace=True)
+
+    # 合并数据
+    poetRawData = pd.concat([PoetParticipateWork, bexiangzan, discussed], axis=1).fillna(0)
+    # 归一化
+    for column in poetRawData.columns:
+        poetRawData[column] = min_max_normalize(poetRawData[column])
+
+    participateWeight = float(poetPara[0])
+    writeXZWeight = 0
+    inXZWeight = float(poetPara[1])
+    bediscussedWeight = float(poetPara[2])
+    changheWeight = 0
+    poet_min_max = poetRawData.copy()
+    poet_min_max['participateCalc'] = participateWeight * poet_min_max['participate_count']
+    # poet_min_max['writeXZCalc'] = writeXZWeight * poet_min_max['xiangzanauthor_count']
+    poet_min_max['inXZCalc'] = inXZWeight * poet_min_max['bexiangzansubjectCount']
+    poet_min_max['bediscussedCalc'] = bediscussedWeight * poet_min_max['discussedCount']
+    # poet_min_max['changheCalc'] = changheWeight * poet_min_max['changheshiCount']
+
+    poet_min_max['totalWeight'] = poet_min_max['participateCalc'] + poet_min_max['inXZCalc'] + poet_min_max[
+        'bediscussedCalc']
+    # ji_min_max['totalWeight'] = xuweight * ji_min_max['xucount'] + baweight * ji_min_max['bacount'] + ticiweight * \
+    #                             ji_min_max['ticicount'] + includedweight * ji_min_max['includedcount']
+    poet_min_max_sorted = poet_min_max.sort_values('totalWeight', ascending=False)
+    max_importance = poet_min_max_sorted['totalWeight'].max()
+    poet_min_max_sorted['normalized_totalWeight'] = poet_min_max_sorted['totalWeight'] / max_importance
+    poet_min_max_sorted['ln_normalized_totalWeight'] = np.log(poet_min_max_sorted['normalized_totalWeight'] + 0.01)
+
+    global poetRankNew
+    poetRankNew = poet_min_max_sorted.copy()
+
+    columns_to_exclude = ['HuWenKai', 'xuZuoZhe', 'baZuoZhe']
+    columns_to_exclude += [col for col in poet.columns if 'PY' in col]
+    columns_to_check = [col for col in poet.columns if col not in columns_to_exclude]
+    columns_to_select = ', '.join(columns_to_check)
+
+    poet.fillna('unknown', inplace=True)
+    poetDetailsQuery = f'''SELECT 
+                        poet.{columns_to_select}, 
+                        COALESCE(current_region.PresentdayEquivalent, 'unknown') AS PresentdayEquivalent,
+                        COALESCE(parent_region.regionHZ, 'unknown') AS ParentRegionName
+                        FROM 
+                            poet
+                        LEFT JOIN 
+                            poetregionlinks AS pr ON poet.poetID = pr.poetID
+                        LEFT JOIN 
+                            region AS current_region ON pr.regionID = current_region.regionID
+                        LEFT JOIN 
+                            region AS parent_region ON current_region.parentRegionID = parent_region.regionID
+                        WHERE 
+                            poet.poetID IN ({','.join(map(str, poet_min_max_sorted.index.tolist()))});'''
+    poetDetails = db_connection.query(poetDetailsQuery).df().set_index('poetID')
+    poetDetails['fullRegion'] = poetDetails['PresentdayEquivalent']
+
+    # poetDetails['ParentRegionName'] = poetDetails['ParentRegionName'].apply(lambda x: convert(x, 'zh-cn')).str[:2]
+    poetDetails['fullRegion'] = np.where(
+        (poetDetails['fullRegion'].str.len() < 4) & (poetDetails['fullRegion'] != 'unknown') & (
+                poetDetails['fullRegion'] != '北京') & (poetDetails['fullRegion'] != '天津'),  # 条件
+        poetDetails['ParentRegionName'].str[:2],  # 如果条件为真
+        poetDetails['fullRegion']  # 如果条件为假
+    )
+    poetDetails['fullRegion'] = np.where(
+        poetDetails['fullRegion'] != 'unknown',  # 条件
+        poetDetails['fullRegion'].str[:2],  # 如果条件为真
+        poetDetails['fullRegion']  # 如果条件为假
+    )
+    poetDetails['fullRegion'] = poetDetails['fullRegion'].apply(lambda x: convert(x, 'zh-cn'))
+
+    poetDetails.loc[poetDetails['fullRegion'] == '烟台', 'fullRegion'] = '山东'
+    poetDetails.loc[poetDetails['fullRegion'] == '北魏', 'fullRegion'] = 'unknown'
+    poetDetails.loc[poetDetails['fullRegion'] == '北直', 'fullRegion'] = '北京'
+    poetDetails.loc[poetDetails['fullRegion'] == '北平', 'fullRegion'] = '北京'
+    poetDetails.loc[poetDetails['fullRegion'] == '中书', 'fullRegion'] = '山西'
+    poetDetails.loc[poetDetails['fullRegion'] == '广南', 'fullRegion'] = '广东'
+    poetDetails.loc[poetDetails['fullRegion'] == '两浙', 'fullRegion'] = '浙江'
+    poetDetails.loc[poetDetails['fullRegion'] == ' 四', 'fullRegion'] = '四川'
+    poetDetails.loc[poetDetails['fullRegion'] == '*为', 'fullRegion'] = '浙江'
+    poetDetails.loc[poetDetails['fullRegion'] == '利州', 'fullRegion'] = '福建'
+    poetDetails.loc[poetDetails['fullRegion'] == '梓州', 'fullRegion'] = '四川'
+    poetDetails.loc[poetDetails['fullRegion'] == '东晋', 'fullRegion'] = '广东'
+    poetDetails.loc[poetDetails['fullRegion'] == '江南', 'fullRegion'] = '安徽'
+
+    poetDetails['PresentdayEquivalent'] = np.where(
+        poetDetails['PresentdayEquivalent'] != 'unknown',  # 条件
+        poetDetails['PresentdayEquivalent'].apply(extract_last_two_and_abbreviate),  # 如果条件为真
+        poetDetails['PresentdayEquivalent']  # 如果条件为假
+    )
+
+    poetDetails['StartYear'] = np.where(
+        poetDetails['StartYear'] == 0,  # 如果年份为0
+        'unknown',  # 替换为unknown
+        poetDetails['StartYear']  # 否则保持原值
+    )
+
+    poetDetails['EndYear'] = np.where(
+        poetDetails['EndYear'] == 0,  # 如果年份为0
+        'unknown',  # 替换为unknown
+        poetDetails['EndYear']  # 否则保持原值
+    )
+    # 整合结果
+    combined_results = []
+    for poetID, row in poet_min_max_sorted.iterrows():
+        poet_detail = {}
+        if poetID in poetDetails.index:
+            poet_detail = poetDetails.loc[poetID].to_dict()
+
+        combined = {
+            'poetID': int(poetID),
+            'poetCount': row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+            'poetDetail': poet_detail
+        }
+        combined_results.append(combined)
+        # print(combined_results)
+
+    # print(poet_min_max_sorted)
+    return JSONResponse(content={"data": combined_results})
 
 
 @app.get('/poetImportance/{poetPara}')
@@ -1056,4 +1250,62 @@ ORDER BY
     result = db_connection.query(query).df()
     result['IDName'] = result['poetID'].astype(str) + " - " + result['NameHZ']
     result_dict = result.to_dict(orient='records')
+    return result_dict
+
+
+@app.get("/getpoetworkID/{poetID}", summary="获取作者的集纯id")
+def get_poet_work(poetID: str, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
+    query = f'''
+            SELECT workID
+            FROM workpoetlinks
+            WHERE poetID = {poetID}
+        '''
+    result = db_connection.query(query).df()
+    result_dict = result.to_dict(orient='records')
+    # result_list = result['workID'].tolist()
+    return result_dict
+
+
+@app.get("/getworkpoemsdetail/{workID}")
+def get_work_poem_detail(workID: str, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
+    # print(workID)
+    query = f'''
+            SELECT workpoemlinks.workID,work.TitleHZ AS workTitle,poet.poetID,poet.NameHZ,poem.poemID,poem.TitleHZ AS poemTitle
+            FROM workpoemlinks
+            LEFT JOIN poem ON workpoemlinks.poemID = poem.poemID
+            LEFT JOIN work ON workpoemlinks.workID = work.workID
+            LEFT JOIN poempoetlinks ON workpoemlinks.poemID =poempoetlinks.poemID
+            LEFT JOIN poet ON poempoetlinks.poetID = poet.poetID
+            WHERE workpoemlinks.workID = {workID}
+        '''
+    result = db_connection.query(query).df()
+    # result_dict = result.to_dict(orient='records')
+    sanitized_result = result.replace([np.nan, np.inf, -np.inf], "unknown")
+    result_dict = sanitized_result.to_dict(orient='records')
+    # result_list = result['poemID'].tolist()
+    # print(result_list)
+    return result_dict
+
+
+@app.get("/getpoetpoemsdetail/{poetID}")
+def get_poet_poem_detail(poetID: str, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
+    # print(workID)
+    query = f'''
+            SELECT workpoetlinks.workID,work.TitleHZ AS workTitle,poet.poetID,poet.NameHZ,poem.poemID,poem.TitleHZ AS poemTitle
+            FROM workpoetlinks
+            LEFT JOIN work ON workpoetlinks.workID = work.workID
+            LEFT JOIN poet ON workpoetlinks.poetID = poet.poetID
+            LEFT JOIN poempoetlinks ON workpoetlinks.poetID = poempoetlinks.poetID
+            LEFT JOIN poem ON poempoetlinks.poemID = poem.poemID
+            WHERE workpoetlinks.poetID = {poetID}
+        '''
+    result = db_connection.query(query).df()
+    # result_dict = result.to_dict(orient='records')
+    sanitized_result = result.replace([np.nan, np.inf, -np.inf], "unknown")
+    sanitized_result["workTitle"] = sanitized_result["workTitle"].apply(
+        lambda x: re.split(r'[:：﹕(,]', x)[0].strip() if isinstance(x, str) else "unknown"
+    )
+    result_dict = sanitized_result.to_dict(orient='records')
+    # result_list = result['poemID'].tolist()
+    # print(result_list)
     return result_dict
