@@ -1184,4 +1184,7 @@
         color: steelblue;
         text-decoration: underline;
     }
+    .range-secondary {
+        --range-shdw: gray;
+    }
 </style>
