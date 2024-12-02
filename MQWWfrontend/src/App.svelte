@@ -317,11 +317,6 @@
         }
     }
 
-    function showLoading() {
-        changing = true;
-        console.log('Loading set to true');
-    }
-
     let displayPoems = [];
     let displayPoemsDetail = {};
 
@@ -1010,7 +1005,8 @@
             </div>
 
             <div style="height: 100%">
-                <MainCharts {poetRank} {rank} selectContent={selectContent} {clear}/>
+                <MainCharts {poetRank} {rank} selectContent={selectContent} {clear} selectedPoetID={currentPoet}
+                            selectedWorkID={currentWork}/>
             </div>
 
         </div>
@@ -1094,21 +1090,29 @@
                             <table style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #ddd;">
                                 <thead>
                                 <tr>
-                                    <th style="border: 1px solid #ddd; padding: 5px;">Work</th>
-                                    <th style="border: 1px solid #ddd; padding: 5px;">Poet</th>
-                                    <th style="border: 1px solid #ddd; padding: 5px;">Poem</th>
+                                    <th class="tableHead">Work</th>
+                                    <th class="tableHead">Poet</th>
+                                    <th class="tableHead">Poem</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 {#each displayPoems as poem}
                                     <tr>
-                                        <td style="border: 1px solid #ddd; padding: 5px;">
+                                        <td class="tableText"
+                                            onclick={()=>{
+                                                currentWork=poem.workID;
+                                                currentPoet=-1;}
+                                            }>
                                             {poem.workTitle.split(/[:：﹕(,]/)[0].trim()}
                                         </td>
-                                        <td style="border: 1px solid #ddd; padding: 5px;">
+                                        <td class="tableText"
+                                            onclick={()=>{
+                                                currentPoet=poem.poetID;
+                                                currentWork=-1;}
+                                            }>
                                             {poem.NameHZ}
                                         </td>
-                                        <td style="border: 1px solid #ddd; padding: 5px;cursor: pointer;color: steelblue;text-decoration: underline;"
+                                        <td class="tableText"
                                             onclick={()=>selectField(poem,'poem')}>
                                             {poem.poemTitle}
                                         </td>
@@ -1135,13 +1139,8 @@
         padding: 1rem;
     }
 
-    .range-secondary {
-        --range-shdw: gray;
-    }
-
     body {
         height: 100vh;
-        /*overflow-y: scroll;*/
     }
 
     .modal {
@@ -1149,14 +1148,11 @@
         left: 55%;
         height: max-content;
         max-width: 27%;
-        /*max-height: 50%;*/
         display: block !important;
         justify-items: start !important;
-        /*overflow: hidden;*/
     }
 
     .modal::backdrop {
-        /*background-color: transparent !important;*/
         animation: modal-pop 0.2s ease-out;
     }
 
@@ -1173,12 +1169,19 @@
         left: 0;
     }
 
-    .scrollable {
-        overflow-x: scroll;
-        box-sizing: border-box;
+    .tableHead {
+        border: 1px solid #ddd;
+        padding: 5px;
     }
 
-    .range-primary {
-        --range-shdw: 'black' !important;
+    .tableText {
+        border: 1px solid #ddd;
+        padding: 5px;
+        cursor: pointer;
+    }
+
+    .tableText:hover {
+        color: steelblue;
+        text-decoration: underline;
     }
 </style>

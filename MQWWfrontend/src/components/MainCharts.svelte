@@ -18,7 +18,8 @@
     let unknownWorkData = [], unknownPoetData = []; // 存储无效数据
     let xScaleWork, xScalePoet, yScaleWork, yScalePoet, unknownWorkXScale, unknownPoetXScale;
     const margin = {top: 25, right: 10, bottom: 30, left: 60};
-    let selectedWorkID = -1, selectedPoetID = -1;
+    export let selectedWorkID = -1
+    export let selectedPoetID = -1;
     let heighlightWork = [], heighlightPoet = [];
     let workYearElement, poetYearElement, poetRegionElement; // SVG 容器引用
 
@@ -157,6 +158,46 @@
         // 在这里处理点击事件，比如显示详细信息等
     }
 
+    $:{
+        if (selectedWorkID !== -1) {
+            // let temp = {workID: selectedWorkID, poetID: selectedPoetID}
+            selectedPoetID = -1
+            heighlightWork = [selectedWorkID]
+            fetch(`${BASE_URL}/getworkpoetsidwithrelation/${selectedWorkID}`)
+                .then(response => response.json())
+                .then(results => {
+                    // console.log(results)
+                    let poets = results.map(d => d.poetID)
+                    // console.log(poets)
+                    heighlightPoet = poets.sort((a, b) => {
+                        const poetA = poetScatterData.find(p => p.poetID === a);
+                        const poetB = poetScatterData.find(p => p.poetID === b);
+                        return (poetA?.poetStartYear || 0) - (poetB?.poetStartYear || 0);
+                    });
+                })
+            if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
+        }
+
+        if (selectedPoetID !== -1) {
+            selectedWorkID = -1;
+            heighlightPoet = [selectedPoetID]
+            // if (selectedPoetID)
+            fetch(`${BASE_URL}/getpoetworkID/${selectedPoetID}`)
+                .then(response => response.json())
+                .then(results => {
+                    // console.log(results)
+                    let works = results.map(d => d.workID)
+                    // console.log(poets)
+                    heighlightWork = works.sort((a, b) => {
+                        const workA = scatterData.find(p => p.workID === a);
+                        const workB = scatterData.find(p => p.workID === b);
+                        return (workA?.PubStartYear || 0) - (workB?.PubStartYear || 0);
+                    });
+                })
+            if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
+        }
+    }
+
     function selectWork(data) {
         // if (data.overlapping) return;
         selectedWorkID = selectedWorkID === data.workID ? -1 : data.workID;
@@ -165,6 +206,8 @@
             heighlightPoet = []
         } else {
             selectedPoetID = -1
+            const selectedCircle = d3.selectAll(".workCircle").filter(d => d.workID === selectedWorkID);
+            selectedCircle.raise(); // 将高亮的点移动到顶层
             heighlightWork = [selectedWorkID]
             // if (selectedPoetID === -1) {
             //     heighlightWork = [selectedWorkID]
@@ -195,6 +238,8 @@
             heighlightPoet = [];
             heighlightWork = []
         } else {
+            const selectedCircle = d3.selectAll(".poetCircle").filter(d => d.poetID === selectedPoetID);
+            selectedCircle.raise(); // 将高亮的点移动到顶层
             selectedWorkID = -1;
             heighlightPoet = [selectedPoetID]
             // if (selectedPoetID)
