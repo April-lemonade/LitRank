@@ -574,16 +574,11 @@ def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = De
         '''SELECT p.poetassubjectID AS poetID, COUNT(DISTINCT p.poemID) AS bexiangzansubjectCount
         FROM poem p
         WHERE p.GenreHZ IN ('文﹕年譜', '文﹕略傳', '文﹕傳') AND p.poetassubjectID != 0
-            AND p.poetassubjectID IN (
-                SELECT DISTINCT poetID
-                FROM workpoetlinks
-            )
         GROUP BY p.poetassubjectID;''').df()
 
     discussed = db_connection.query(
         '''SELECT p.poetassubjectID AS poetID, COUNT(DISTINCT p.poemID) AS discussedCount
         FROM poem p
-        INNER JOIN workpoetlinks w ON p.poetassubjectID = w.poetID
         WHERE p.GenreHZ IN ('文﹕詩話', '文﹕詞話', '文﹕案語') AND p.poetassubjectID != 0
         GROUP BY p.poetassubjectID;''').df()
 

@@ -120,20 +120,6 @@
     let regionCircles = [];
 
     function showTooltip(event, points) {
-        // if (points.length <= 1) {
-        //     hideTooltip(); // 如果点数量小于等于 1，则不显示 Tooltip
-        //     return;
-        // }
-
-        // // 判断是否是 poet 类型，并且高亮 poet 不为空
-        // if (points[0].poetID && points[0].poetID !== null && heighlightPoet.length > 0) {
-        //     // 仅显示高亮 poet
-        //     points = points.filter(d => heighlightPoet.includes(d.poetID));
-        //     if (points.length === 0) {
-        //         hideTooltip(); // 如果没有匹配的高亮 poet，则隐藏 Tooltip
-        //         return;
-        //     }
-        // }
         tooltipContent = points.map(d => ({
             text: d.TitleHZ
                 ? d.TitleHZ.split(/[:：﹕(,]/)[0].trim() // 提取 TitleHZ 前缀部分并去掉多余空格
@@ -160,6 +146,8 @@
 
     $:{
         if (selectedWorkID !== -1) {
+            const connectionContainer = d3.select("#connections");
+            connectionContainer?.selectAll("line").remove(); // 清除旧连线
             // let temp = {workID: selectedWorkID, poetID: selectedPoetID}
             selectedPoetID = -1
             heighlightWork = [selectedWorkID]
@@ -174,11 +162,14 @@
                         const poetB = poetScatterData.find(p => p.poetID === b);
                         return (poetA?.poetStartYear || 0) - (poetB?.poetStartYear || 0);
                     });
+                    drawConnections();
                 })
             if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
         }
 
         if (selectedPoetID !== -1) {
+            const connectionContainer = d3.select("#connections");
+            connectionContainer?.selectAll("line").remove(); // 清除旧连线
             selectedWorkID = -1;
             heighlightPoet = [selectedPoetID]
             // if (selectedPoetID)
@@ -193,6 +184,7 @@
                         const workB = scatterData.find(p => p.workID === b);
                         return (workA?.PubStartYear || 0) - (workB?.PubStartYear || 0);
                     });
+
                 })
             if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
         }
@@ -204,11 +196,29 @@
         if (selectedWorkID === -1) {
             heighlightWork = []
             heighlightPoet = []
+            d3.select("#connections").selectAll("line").remove(); // 移除连线
         } else {
             selectedPoetID = -1
-            const selectedCircle = d3.selectAll(".workCircle").filter(d => d.workID === selectedWorkID);
-            selectedCircle.raise(); // 将高亮的点移动到顶层
-            heighlightWork = [selectedWorkID]
+            // 获取原生 DOM 元素数组
+            const selectedCircle = d3.selectAll(".workCircle")._groups[0];
+
+            // 过滤出符合条件的元素
+            const filteredCircle = Array.from(selectedCircle).filter(d =>
+                d.__attributes && d.__attributes["data-workid"] === selectedWorkID
+            );
+
+            // 如果找到了目标元素
+            if (filteredCircle.length > 0) {
+                const targetElement = filteredCircle[0];
+
+                // 将目标元素转换为 D3 selection 以便使用 D3 的方法
+                d3.select(targetElement).raise();
+
+                console.log("Raised element:", targetElement);
+            } else {
+                console.log("No matching element found");
+            }
+            heighlightWork = [selectedWorkID];
             // if (selectedPoetID === -1) {
             //     heighlightWork = [selectedWorkID]
             // } else {
@@ -226,6 +236,8 @@
                         const poetB = poetScatterData.find(p => p.poetID === b);
                         return (poetA?.poetStartYear || 0) - (poetB?.poetStartYear || 0);
                     });
+
+                    drawConnections();
                 })
         }
         if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
@@ -233,6 +245,8 @@
     }
 
     function selectPoet(data) {
+        const connectionContainer = d3.select("#connections");
+        connectionContainer?.selectAll("line").remove(); // 清除旧连线
         selectedPoetID = selectedPoetID === data.poetID ? -1 : data.poetID;
         if (selectedPoetID === -1) {
             heighlightPoet = [];
@@ -272,6 +286,8 @@
             .scaleExtent([1, 10]) // 缩放范围
             .translateExtent([[0, 0], [pixelWidth, pixelHeight / 2]]) // 限制平移范围
             .on("zoom", (event) => {
+                const connectionContainer = d3.select("#connections");
+                connectionContainer?.selectAll("line").remove(); // 清除旧连线
                 hideTooltip();
                 const transform = event.transform;
 
@@ -432,6 +448,8 @@
         scatterData = allScatterData.filter(d => d.PubStartYear);
         poetScatterData = allPoetScatterData.filter(d => d.poetStartYear && d.poetStartYear !== 'unknown');
 
+        console.log("scatterData", scatterData);
+
         // 找到有重叠的点
         scatterData.forEach(d => {
             d.overlapping = scatterData.filter(
@@ -514,10 +532,73 @@
 
     $:{
         if (clear) {
+            const connectionContainer = d3.select("#connections");
+            connectionContainer?.selectAll("line").remove(); // 清除旧连线
             selectedWorkID = -1;
             selectedPoetID = -1;
             heighlightPoet = [];
             heighlightWork = [];
+        }
+    }
+
+    function drawConnections() {
+        const connectionContainer = d3.select("#connections");
+        connectionContainer.selectAll("line").remove(); // 清除旧连线
+
+        if (selectedWorkID !== -1) {
+            heighlightPoet.forEach(poetID => {
+                // 查找 work 和 poet 数据，包括 unknown 数据
+                const workNode = scatterData.find(d => d.workID === selectedWorkID) ||
+                    unknownWorkData.find(d => d.workID === selectedWorkID);
+
+                const poetNode = poetScatterData.find(d => d.poetID === poetID) ||
+                    unknownPoetData.find(d => d.poetID === poetID);
+
+                if (workNode && poetNode) {
+                    const workCoords = workNode.PubStartYear
+                        ? {
+                            x: workTransform.xScale(workNode.PubStartYear),
+                            y: workTransform.yScale(workNode.WorkImportance)
+                        }
+                        : {
+                            x: margin.left - boxWidth / 2, // 未知年份的坐标
+                            y: workTransform.yScale(workNode.WorkImportance)
+                        };
+
+                    const poetCoords = poetNode.poetStartYear
+                        ? {
+                            x: poetTransform.xScale(poetNode.poetStartYear),
+                            y: poetTransform.yScale(poetNode.PoetImportance)
+                        }
+                        : {
+                            x: margin.left - boxWidth / 2, // 未知年份的坐标
+                            y: poetTransform.yScale(poetNode.PoetImportance)
+                        };
+
+                    // 转换为 connections 的 SVG 坐标
+                    const workSvgRect = workYearElement.getBoundingClientRect();
+                    const poetSvgRect = poetYearElement.getBoundingClientRect();
+                    const connectionsSvgRect = connectionContainer.node().getBoundingClientRect();
+
+                    const workSvgOffset = {
+                        x: workSvgRect.left - connectionsSvgRect.left,
+                        y: workSvgRect.top - connectionsSvgRect.top
+                    };
+                    const poetSvgOffset = {
+                        x: poetSvgRect.left - connectionsSvgRect.left,
+                        y: poetSvgRect.top - connectionsSvgRect.top
+                    };
+
+                    connectionContainer
+                        .append("line")
+                        .attr("x1", workCoords.x + workSvgOffset.x)
+                        .attr("y1", workCoords.y + workSvgOffset.y)
+                        .attr("x2", poetCoords.x + poetSvgOffset.x)
+                        .attr("y2", poetCoords.y + poetSvgOffset.y)
+                        .attr("stroke", "steelblue")
+                        .attr("stroke-width", 1.5);
+                }
+            });
         }
     }
 </script>
@@ -539,17 +620,20 @@
             </ul>
         {/if}
     </div>
-    <svg bind:this={workYearElement} width="100%" height="33%" onmouseleave={() => {
+    <svg id="connections"
+         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
+    <svg bind:this={workYearElement} width="100%" height="34%" onmouseleave={() => {
         setTimeout(() => {
             if (!isMouseInSVG) hideTooltip();
         }, 100); // 100ms 延迟
     }}>
-        <text x="50%" y="100%" text-anchor="middle" font-size="12px">Publication Year</text>
+        <text x="50%" y="98%" text-anchor="middle" font-size="12px">Publication Year</text>
         <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Work Popularity</text>
 
         <g id="unknownWorkData">
             {#each unknownWorkData as d}
                 <circle
+                        class="workCircle"
                         cx={margin.left - boxWidth / 2}
                         cy={workTransform.yScale(d.WorkImportance)}
                         r="3"
@@ -560,6 +644,7 @@
                         filter={heighlightWork.length === 0 || heighlightWork.includes(d.workID) ? "" : "grayscale(100%)"}
                         stroke="white"
                         stroke-width="1.5"
+                        data-workid={d.workID}
                         onmouseover={(e) => {
                         const overlappingPoints = unknownWorkData.filter(p =>
                                         workTransform.yScale(p.WorkImportance) === workTransform.yScale(d.WorkImportance));
@@ -585,6 +670,7 @@
                         filter={heighlightWork.length === 0 || heighlightWork.includes(d.workID) ? "" : "grayscale(100%)"}
                         stroke="white"
                         stroke-width="1.5"
+                        data-workid={d.workID}
                         onmouseover={(e) => {
                         const overlappingPoints = scatterData.filter(p =>
                                         workTransform.xScale(p.PubStartYear) === workTransform.xScale(d.PubStartYear) &&
@@ -596,7 +682,7 @@
         </g>
 
     </svg>
-    <svg bind:this={poetYearElement} width="100%" height="33%" onmouseleave={() => {
+    <svg bind:this={poetYearElement} width="100%" height="34%" onmouseleave={() => {
         setTimeout(() => {
             if (!isMouseInSVG) hideTooltip();
         }, 100); // 100ms 延迟
@@ -606,6 +692,7 @@
         <g id="unknownPoetData">
             {#each unknownPoetData as d}
                 <circle
+                        class="poetCircle"
                         cx={margin.left - boxWidth / 2}
                         cy={poetTransform.yScale(d.PoetImportance)}
                         r="3"
@@ -676,7 +763,7 @@
         </g>
     </svg>
 
-    <svg bind:this={poetRegionElement} width='100%' height="33%">
+    <svg bind:this={poetRegionElement} width='100%' height="32%">
         <g id="poetRegionMap">
             {#if geojsonData}
                 {#each geojsonData.features as feature}

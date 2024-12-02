@@ -601,7 +601,7 @@
                     content: extractedData
                 }
                 console.log(relatedContent)
-            } else if (label === 'DateCycleHZ' || label === 'DateXF' || label === 'DateCycleHZ' || label === 'DateEmperorHZ') {
+            } else if (label === 'DateCycleHZ' || label === 'DateXF' || label === 'DateCycleHZ' || label === 'DateEmperorHZ' || label === 'DateDynastyHZ') {
                 if (currentWorkDetail.PubStartYear !== 0 || currentWorkDetail.PubEndYear !== 0) {
                     let years = [currentWorkDetail.PubStartYear, currentWorkDetail.PubEndYear]
                     years.filter(year => year !== 0)
@@ -1184,6 +1184,7 @@
         color: steelblue;
         text-decoration: underline;
     }
+
     .range-secondary {
         --range-shdw: gray;
     }
