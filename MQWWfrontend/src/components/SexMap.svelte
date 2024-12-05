@@ -3,17 +3,20 @@
     import * as turf from "@turf/turf";
     import {onMount} from "svelte";
     import {BASE_URL} from "../constants.js";
+    import geojsonData from '../assets/china_full.json';
 
     export let width;
     export let height;
     export let allPoetsIDs;
 
     let svgW = 1200; // SVG 宽度
-    let svgH = 1000; // SVG 高度
+    let svgH = 200; // SVG 高度
 
     // 地图数据和性别数据
     let mapData = null;
     let genderData = [];
+    let maleTotal = 0; // 男性总数
+    let femaleTotal = 0; // 女性总数
 
     // 定义颜色矩阵（3x3 双轴颜色）
     const colors = [
@@ -27,7 +30,11 @@
 
     // 加载 GeoJSON 地图数据
     async function fetchMapData() {
-        try {
+        mapData = geojsonData
+        mapData.features = mapData.features.map(feature => turf.rewind(feature, {reverse: true}));
+        // drawMap();
+        drawBars();
+        /*try {
             const response = await fetch("https://geo.datav.aliyun.com/areas_v3/bound/100000_full_city.json");
             const data = await response.json();
 
@@ -38,7 +45,7 @@
             drawMap(); // 在地图数据加载后立即绘制地图
         } catch (error) {
             console.error("Error loading map data:", error);
-        }
+        }*/
     };
 
     // 获取性别数据
@@ -55,8 +62,12 @@
             });
             const result = await response.json();
             genderData = result;
-            // console.log(genderData);
-            drawMap(); // 在性别数据加载后重新绘制地图
+            // 计算总数
+            maleTotal = d3.sum(genderData, d => d.Males);
+            femaleTotal = d3.sum(genderData, d => d.Females);
+            console.log('maleTotal', maleTotal);
+            // drawMap(); // 在性别数据加载后重新绘制地图
+            drawBars();
         } catch (error) {
             console.error("Error fetching gender data:", error);
         }
@@ -145,6 +156,59 @@
         // 添加图例
         addLegend();
     };
+
+    // 绘制矩形
+    function drawBars() {
+        const svg = d3.select("svg.map")
+            .attr("viewBox", `0 0 ${svgW} ${svgH}`)
+            .attr("width", svgW)
+            .attr("height", svgH);
+
+        svg.selectAll("*").remove(); // 清空之前内容
+
+        const total = maleTotal + femaleTotal;
+
+        const maleWidth = (maleTotal / total) * svgW;
+        const femaleWidth = (femaleTotal / total) * svgW;
+
+        // 绘制男性矩形
+        svg.append("rect")
+            .attr("x", 0)
+            .attr("y", 50)
+            .attr("width", maleWidth)
+            .attr("height", 100)
+            .attr("fill", "steelblue")
+            .append("title")
+            .text(`Males: ${maleTotal}`);
+
+        // 绘制女性矩形
+        svg.append("rect")
+            .attr("x", maleWidth)
+            .attr("y", 50)
+            .attr("width", femaleWidth)
+            .attr("height", 100)
+            .attr("fill", "lightcoral")
+            .append("title")
+            .text(`Females: ${femaleTotal}`);
+
+        // 添加标签
+        svg.append("text")
+            .attr("x", maleWidth / 2)
+            .attr("y", 40)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 55)
+            .attr("fill", "black")
+            .text(`Males: ${maleTotal}`);
+
+        svg.append("text")
+            .attr("x", maleWidth + femaleWidth / 2)
+            .attr("y", 40)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 55)
+            .attr("fill", "black")
+            .text(`Females: ${femaleTotal}`);
+    }
+
 
     // 添加图例
     function addLegend() {

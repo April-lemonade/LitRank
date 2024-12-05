@@ -565,6 +565,7 @@ poetRankNew = pd.DataFrame()
 @app.get('/poetImportanceNew/{poetPara}')
 def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection)):
     poetPara = poetPara.split(',')
+    print(poetPara)
 
     PoetParticipateWork = db_connection.query(
         "SELECT poetID, COUNT(DISTINCT workID) AS participate_count FROM workpoetlinks GROUP BY poetID ORDER BY "
@@ -590,9 +591,12 @@ def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = De
 
     # 合并数据
     poetRawData = pd.concat([PoetParticipateWork, bexiangzan, discussed], axis=1).fillna(0)
+    poetRawData = poetRawData[poetRawData['participate_count'] > 0]
+    poetRawData = poetRawData.loc[
+        (poetRawData.index != 6461) & (poetRawData.index != 6467) & (poetRawData.index != 6468)]
     # 归一化
     for column in poetRawData.columns:
-        poetRawData[column] = min_max_normalize(poetRawData[column])
+        poetRawData[column] = poetRawData[column]/poetRawData[column].max()
 
     participateWeight = float(poetPara[0])
     writeXZWeight = 0

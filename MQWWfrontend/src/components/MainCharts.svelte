@@ -12,6 +12,8 @@
     export let selectContent;
     export let clear;
 
+    export let updateScale;
+
     // 方框的尺寸
     const boxWidth = 40;
     let scatterData, poetScatterData;
@@ -22,6 +24,7 @@
     export let selectedPoetID = -1;
     let heighlightWork = [], heighlightPoet = [];
     let workYearElement, poetYearElement, poetRegionElement; // SVG 容器引用
+    let poetRegionElementContainer;
 
     let tooltipContent = ""; // 工具提示的内容
     let tooltipStyle = {left: "0px", top: "0px", display: "none"}; // 工具提示样式
@@ -54,7 +57,7 @@
             });
 
 
-        svg.call(zoom);
+        // svg.call(zoom);
 
         regions = geojsonData.features.map(feature => ({
             name: feature.properties.name.replace(/市|县|区$/, ""),
@@ -75,10 +78,11 @@
     })
     let mapdata;
 
-    $:if (workYearElement && poetYearElement) {
+    $:if (workYearElement && poetYearElement && poetRegionElement) {
         document.addEventListener('mousemove', (event) => {
             const svgBounds = workYearElement.getBoundingClientRect();
             const poetBounds = poetYearElement.getBoundingClientRect();
+            const regionBounds = poetRegionElement.getBoundingClientRect();
 
             // 检查鼠标是否在任何一个 SVG 内部
             isMouseInSVG =
@@ -89,7 +93,11 @@
                 (event.clientX >= poetBounds.left &&
                     event.clientX <= poetBounds.right &&
                     event.clientY >= poetBounds.top &&
-                    event.clientY <= poetBounds.bottom);
+                    event.clientY <= poetBounds.bottom) ||
+                (event.clientX >= regionBounds.left &&
+                    event.clientX <= regionBounds.right &&
+                    event.clientY >= regionBounds.top &&
+                    event.clientY <= regionBounds.bottom);
         });
     }
 
@@ -99,7 +107,7 @@
         // 设置地图投影
         projection = projection = d3.geoMercator()
             .center([104, 35]) // 设置全国中心经纬度
-            .scale(pixelWidth * 0.8)
+            .scale(pixelWidth * 0.2)
             .translate([pixelWidth / 2, pixelHeight / 6]); // 偏移至 SVG 中心
 
         // 创建路径生成器
@@ -120,13 +128,23 @@
     let regionCircles = [];
 
     function showTooltip(event, points) {
-        tooltipContent = points.map(d => ({
-            text: d.TitleHZ
-                ? d.TitleHZ.split(/[:：﹕(,]/)[0].trim() // 提取 TitleHZ 前缀部分并去掉多余空格
-                : d.NameHZ || "Unknown", // 如果没有 TitleHZ，则用 NameHZ 或默认值
-            data: d,
-            type: d.workID ? 'work' : 'poet'
-        }));
+        // console.log(points)
+        if (points.type === 'Feature') {
+            tooltipContent = {
+                text: points.properties.name,
+                data: regionCounts[points.properties.name],
+                type: 'poet'
+            };
+        } else {
+            tooltipContent = points.map(d => ({
+                text: d.TitleHZ
+                    ? d.TitleHZ.split(/[:：﹕(,]/)[0].trim() // 提取 TitleHZ 前缀部分并去掉多余空格
+                    : d.NameHZ || "Unknown", // 如果没有 TitleHZ，则用 NameHZ 或默认值
+                data: d,
+                type: d.workID ? 'work' : 'poet'
+            }));
+        }
+
         tooltipStyle = {
             left: `${event.pageX - 120}px`,
             top: `${event.pageY}px`,
@@ -148,6 +166,9 @@
         if (selectedWorkID !== -1) {
             const connectionContainer = d3.select("#connections");
             connectionContainer?.selectAll("line").remove(); // 清除旧连线
+            connectionContainer.selectAll("path").remove();
+
+
             // let temp = {workID: selectedWorkID, poetID: selectedPoetID}
             selectedPoetID = -1
             heighlightWork = [selectedWorkID]
@@ -170,6 +191,8 @@
         if (selectedPoetID !== -1) {
             const connectionContainer = d3.select("#connections");
             connectionContainer?.selectAll("line").remove(); // 清除旧连线
+            connectionContainer.selectAll("path").remove();
+
             selectedWorkID = -1;
             heighlightPoet = [selectedPoetID]
             // if (selectedPoetID)
@@ -184,13 +207,17 @@
                         const workB = scatterData.find(p => p.workID === b);
                         return (workA?.PubStartYear || 0) - (workB?.PubStartYear || 0);
                     });
-
+                    drawConnections();
                 })
             if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
         }
     }
 
     function selectWork(data) {
+        const connectionContainer = d3.select("#connections");
+        connectionContainer?.selectAll("line").remove(); // 清除旧连线
+        connectionContainer.selectAll("path").remove();
+
         // if (data.overlapping) return;
         selectedWorkID = selectedWorkID === data.workID ? -1 : data.workID;
         if (selectedWorkID === -1) {
@@ -247,13 +274,15 @@
     function selectPoet(data) {
         const connectionContainer = d3.select("#connections");
         connectionContainer?.selectAll("line").remove(); // 清除旧连线
+        connectionContainer.selectAll("path").remove();
+
         selectedPoetID = selectedPoetID === data.poetID ? -1 : data.poetID;
         if (selectedPoetID === -1) {
             heighlightPoet = [];
             heighlightWork = []
         } else {
-            const selectedCircle = d3.selectAll(".poetCircle").filter(d => d.poetID === selectedPoetID);
-            selectedCircle.raise(); // 将高亮的点移动到顶层
+            // const selectedCircle = d3.selectAll(".poetCircle").filter(d => d.poetID === selectedPoetID);
+            // selectedCircle.raise(); // 将高亮的点移动到顶层
             selectedWorkID = -1;
             heighlightPoet = [selectedPoetID]
             // if (selectedPoetID)
@@ -268,6 +297,7 @@
                         const workB = scatterData.find(p => p.workID === b);
                         return (workA?.PubStartYear || 0) - (workB?.PubStartYear || 0);
                     });
+                    drawConnections();
                 })
         }
         if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
@@ -288,6 +318,8 @@
             .on("zoom", (event) => {
                 const connectionContainer = d3.select("#connections");
                 connectionContainer?.selectAll("line").remove(); // 清除旧连线
+                connectionContainer.selectAll("path").remove();
+
                 hideTooltip();
                 const transform = event.transform;
 
@@ -419,6 +451,8 @@
             poetID: d.poetID
         }));
 
+        console.log("allPoetScatterData", allPoetScatterData);
+
         // 未知年份点
         unknownWorkData = rank.filter(d => !d.workCount.PubStartYear).map(d => ({
             WorkImportance: d.workCount.WorkImportance,
@@ -486,6 +520,8 @@
             .domain([d3.min(scatterData, d => d.WorkImportance), d3.max(scatterData, d => d.WorkImportance)])
             .range([chartHeight - margin.bottom, margin.top]);
 
+        console.log([d3.min(poetScatterData, d => d.PoetImportance), d3.max(poetScatterData, d => d.PoetImportance)])
+
         yScalePoet = d3.scaleLinear()
             .domain([d3.min(poetScatterData, d => d.PoetImportance), d3.max(poetScatterData, d => d.PoetImportance)])
             .range([chartHeight - margin.bottom, margin.top]);
@@ -534,6 +570,8 @@
         if (clear) {
             const connectionContainer = d3.select("#connections");
             connectionContainer?.selectAll("line").remove(); // 清除旧连线
+            connectionContainer.selectAll("path").remove();
+
             selectedWorkID = -1;
             selectedPoetID = -1;
             heighlightPoet = [];
@@ -541,64 +579,218 @@
         }
     }
 
+    $: if (heighlightPoet.length > 0) {
+        drawConnections();
+    }
+
     function drawConnections() {
         const connectionContainer = d3.select("#connections");
         connectionContainer.selectAll("line").remove(); // 清除旧连线
+        connectionContainer.selectAll("path").remove();
 
-        if (selectedWorkID !== -1) {
-            heighlightPoet.forEach(poetID => {
-                // 查找 work 和 poet 数据，包括 unknown 数据
-                const workNode = scatterData.find(d => d.workID === selectedWorkID) ||
-                    unknownWorkData.find(d => d.workID === selectedWorkID);
 
-                const poetNode = poetScatterData.find(d => d.poetID === poetID) ||
-                    unknownPoetData.find(d => d.poetID === poetID);
+        // 诗人与作品的连线
+        if (selectedPoetID !== -1) {
+            heighlightWork.forEach((workID) => {
+                const poetNode =
+                    poetScatterData.find((d) => d.poetID === selectedPoetID) ||
+                    unknownPoetData.find((d) => d.poetID === selectedPoetID);
 
-                if (workNode && poetNode) {
-                    const workCoords = workNode.PubStartYear
-                        ? {
-                            x: workTransform.xScale(workNode.PubStartYear),
-                            y: workTransform.yScale(workNode.WorkImportance)
-                        }
-                        : {
-                            x: margin.left - boxWidth / 2, // 未知年份的坐标
-                            y: workTransform.yScale(workNode.WorkImportance)
-                        };
+                const workNode =
+                    scatterData.find((d) => d.workID === workID) ||
+                    unknownWorkData.find((d) => d.workID === workID);
 
+                if (poetNode && workNode) {
                     const poetCoords = poetNode.poetStartYear
                         ? {
                             x: poetTransform.xScale(poetNode.poetStartYear),
-                            y: poetTransform.yScale(poetNode.PoetImportance)
+                            y: poetTransform.yScale(poetNode.PoetImportance),
                         }
                         : {
-                            x: margin.left - boxWidth / 2, // 未知年份的坐标
-                            y: poetTransform.yScale(poetNode.PoetImportance)
+                            x: margin.left - boxWidth / 2,
+                            y: poetTransform.yScale(poetNode.PoetImportance),
                         };
 
-                    // 转换为 connections 的 SVG 坐标
-                    const workSvgRect = workYearElement.getBoundingClientRect();
+                    const workCoords = workNode.PubStartYear
+                        ? {
+                            x: workTransform.xScale(workNode.PubStartYear),
+                            y: workTransform.yScale(workNode.WorkImportance),
+                        }
+                        : {
+                            x: margin.left - boxWidth / 2,
+                            y: workTransform.yScale(workNode.WorkImportance),
+                        };
+
                     const poetSvgRect = poetYearElement.getBoundingClientRect();
+                    const workSvgRect = workYearElement.getBoundingClientRect();
                     const connectionsSvgRect = connectionContainer.node().getBoundingClientRect();
 
-                    const workSvgOffset = {
-                        x: workSvgRect.left - connectionsSvgRect.left,
-                        y: workSvgRect.top - connectionsSvgRect.top
-                    };
                     const poetSvgOffset = {
                         x: poetSvgRect.left - connectionsSvgRect.left,
-                        y: poetSvgRect.top - connectionsSvgRect.top
+                        y: poetSvgRect.top - connectionsSvgRect.top,
+                    };
+                    const workSvgOffset = {
+                        x: workSvgRect.left - connectionsSvgRect.left,
+                        y: workSvgRect.top - connectionsSvgRect.top,
                     };
 
                     connectionContainer
                         .append("line")
-                        .attr("x1", workCoords.x + workSvgOffset.x)
-                        .attr("y1", workCoords.y + workSvgOffset.y)
-                        .attr("x2", poetCoords.x + poetSvgOffset.x)
-                        .attr("y2", poetCoords.y + poetSvgOffset.y)
+                        .attr("x1", poetCoords.x + poetSvgOffset.x)
+                        .attr("y1", poetCoords.y + poetSvgOffset.y)
+                        .attr("x2", workCoords.x + workSvgOffset.x)
+                        .attr("y2", workCoords.y + workSvgOffset.y)
                         .attr("stroke", "steelblue")
                         .attr("stroke-width", 1.5);
                 }
             });
+        }
+
+        // 新增：诗人与地区中心的连线
+        heighlightPoet.forEach((poetID) => {
+            // 找到诗人数据，优先从 poetRank 查找
+            const poetNode = poetRank.find((d) => d.poetID === poetID) ||
+                unknownPoetData.find((d) => d.poetID === poetID);
+
+            if (!poetNode) {
+                console.warn(`Poet with ID ${poetID} not found in poetRank or unknownPoetData.`);
+                return;
+            }
+
+            // 获取诗人点坐标
+            const poetCoords = poetNode.poetDetail.StartYear !== 'unknown'
+                ? {
+                    x: poetTransform.xScale(poetNode.poetDetail.StartYear),
+                    y: poetTransform.yScale(poetNode.poetCount.ln_normalized_totalWeight),
+                }
+                : {
+                    x: margin.left - boxWidth / 2,
+                    y: poetTransform.yScale(poetNode.poetCount.ln_normalized_totalWeight),
+                };
+
+            // 从 poetDetail 获取地区名称
+            const poetRegionName = poetNode.poetDetail.fullRegion
+                ? poetNode.poetDetail.fullRegion.slice(0, 2) // 只取前两个字符
+                : "unknown";
+
+            if (poetRegionName === "unknown") {
+                console.warn(`Region is unknown for poet ${poetNode.poetDetail.NameHZ}`);
+                return; // 如果地区未知，跳过
+            }
+
+            // 找到地区特征
+            const regionFeature = geojsonData.features.find((feature) =>
+                feature.properties.name.startsWith(poetRegionName)
+            );
+
+            if (!regionFeature || !regionFeature.properties.center) {
+                console.warn(`Region feature or center not found for poet region: ${poetRegionName}`);
+                return; // 如果未找到匹配的地区特征或中心点，跳过
+            }
+
+            // 投影到屏幕坐标
+            const regionCenter = projection(regionFeature.properties.center);
+            if (!regionCenter || regionCenter.length !== 2) {
+                console.error(`Invalid region center for ${poetRegionName}:`, regionFeature.properties.center);
+                return; // 如果中心点无效，跳过
+            }
+
+            // 获取诗人和地图的 SVG 偏移
+            const poetSvgRect = poetYearElement.getBoundingClientRect();
+            const regionSvgRect = poetRegionElement.getBoundingClientRect();
+            const connectionsSvgRect = connectionContainer.node().getBoundingClientRect();
+
+            const poetSvgOffset = {
+                x: poetSvgRect.left - connectionsSvgRect.left,
+                y: poetSvgRect.top - connectionsSvgRect.top,
+            };
+
+            const regionSvgOffset = {
+                x: regionSvgRect.left - connectionsSvgRect.left,
+                y: regionSvgRect.top - connectionsSvgRect.top,
+            };
+
+
+/*            connectionContainer
+                .append("line")
+                .attr("x1", poetCoords.x + poetSvgOffset.x)
+                .attr("y1", poetCoords.y + poetSvgOffset.y)
+                .attr("x2", regionCenter[0] + regionSvgOffset.x)
+                .attr("y2", regionCenter[1] + regionSvgOffset.y)
+                .attr("stroke", "orange")
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", "4 2");*/
+
+            const startX = poetCoords.x + poetSvgOffset.x;
+            const startY = poetCoords.y + poetSvgOffset.y;
+            const endX = regionCenter[0] + regionSvgOffset.x;
+            const endY = regionCenter[1] + regionSvgOffset.y;
+
+            // 控制点坐标，设置为曲线中点偏移一定量
+            const controlX = (startX + endX) / 2;
+            const controlY = Math.min(startY, endY) - 50; // 调整曲线弯曲程度
+
+            // 使用贝塞尔曲线绘制路径
+            const pathData = `M ${startX},${startY} Q ${controlX},${controlY} ${endX},${endY}`;
+
+            connectionContainer
+                .append("path")
+                .attr("d", pathData)
+                .attr("stroke", "orange")
+                .attr("stroke-width", 1.5)
+                .attr("fill", "none")
+                .attr("stroke-dasharray", "4 2");
+        });
+    }
+
+    // 初始化相关变量
+    let colorScale = d3.scaleLinear().domain([0, 1]).range(["#f0f0f0", "#ff5733"]);
+    let regionCounts = {};
+
+    // 计算区域颜色
+    $: if (geojsonData && poetRank.length > 0) {
+        const allPoets =
+            heighlightPoet.length > 0
+                ? poetRank.filter((d) => heighlightPoet.includes(d.poetID))
+                : poetRank;
+
+        regionCounts = allPoets.reduce((acc, poet) => {
+            const region = poet.poetDetail?.fullRegion || "unknown";
+            if (!acc[region]) acc[region] = 0;
+            acc[region]++;
+            return acc;
+        }, {});
+        // console.log("allPoets", allPoets);
+
+        // console.log("regionCounts", regionCounts);
+
+        // 获取最大计数值，构建颜色比例尺
+        const maxCount = Math.max(...Object.values(regionCounts), 1);
+        colorScale = d3
+            .scaleLinear()
+            .domain([0, maxCount])
+            .range(["#f0f0f0", "#ff5733"]); // 从浅灰到深橙
+        console.log('colorScale', colorScale.domain())
+        if (updateScale) updateScale(colorScale)
+    }
+
+    // 绘制地图
+    $: {
+        if (poetRegionElement && mapdata) {
+            const regionMap = d3.select(poetRegionElement);
+
+            // 绘制地理区域
+            regionMap
+                .selectAll("path")
+                .data(mapdata.features)
+                .join("path")
+                .attr("d", pathGenerator)
+                .attr("fill", (d) => {
+                    const region = d.properties.name;
+                    return colorScale(regionCounts[region] || 0);
+                })
+                .attr("stroke", "#000")
+                .attr("stroke-width", 0.5);
         }
     }
 </script>
@@ -618,6 +810,10 @@
                     </span>
                 {/each}
             </ul>
+        {:else}
+            <span style="margin-right: 10px;">
+                        {tooltipContent.text}:{tooltipContent.data || 0}
+            </span>
         {/if}
     </div>
     <svg id="connections"
@@ -625,7 +821,7 @@
     <svg bind:this={workYearElement} width="100%" height="34%" onmouseleave={() => {
         setTimeout(() => {
             if (!isMouseInSVG) hideTooltip();
-        }, 100); // 100ms 延迟
+        }, 10);
     }}>
         <text x="50%" y="98%" text-anchor="middle" font-size="12px">Publication Year</text>
         <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Work Popularity</text>
@@ -685,7 +881,7 @@
     <svg bind:this={poetYearElement} width="100%" height="34%" onmouseleave={() => {
         setTimeout(() => {
             if (!isMouseInSVG) hideTooltip();
-        }, 100); // 100ms 延迟
+        }, 10); // 100ms 延迟
     }}>
         <text x="50%" y="100%" text-anchor="middle" font-size="12px">Poet Start Year</text>
         <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Poet Popularity</text>
@@ -704,7 +900,7 @@
                         stroke="white"
                         stroke-width="1.5"
                         onmouseover={(e) => {
-                            let overlappingPoints = poetScatterData.filter(p =>
+                            let overlappingPoints = unknownPoetData.filter(p =>
                                             poetTransform.xScale(p.poetStartYear) === poetTransform.xScale(d.poetStartYear) &&
                                             poetTransform.yScale(p.PoetImportance) === poetTransform.yScale(d.PoetImportance));
                             showTooltip(e, overlappingPoints.length > 0 ? overlappingPoints : [d]);}}
@@ -763,22 +959,28 @@
         </g>
     </svg>
 
-    <svg bind:this={poetRegionElement} width='100%' height="32%">
+    <svg bind:this={poetRegionElement} width='100%' height="32%" onmouseleave={() => {
+        setTimeout(() => {
+            if (!isMouseInSVG) hideTooltip();
+        }, 10);}}>
         <g id="poetRegionMap">
             {#if geojsonData}
                 {#each geojsonData.features as feature}
                     <path
                             d={pathGenerator(feature)}
-                            fill="white"
+                            fill={colorScale(regionCounts[feature.properties.name] || 0)}
                             stroke="black"
                             stroke-width="1"
+                            onmouseover={(e)=>{
+                                showTooltip(e,feature)
+                            }}
                     />
                 {/each}
             {/if}
 
             <!-- 绘制 Circle Packing -->
             {#each packedRegions as region}
-                {#each region.packedData.descendants() as node}
+                <!--{#each region.packedData.descendants() as node}
                     <circle
                             cx={node.x}
                             cy={node.y}
@@ -789,20 +991,12 @@
                     >
                         <title>{node.data.name || region.name}</title>
                     </circle>
-                {/each}
+                {/each}-->
 
-                <!-- 显示地区名称 -->
-                <!--                <text-->
-                <!--                        x={region.center[0]}-->
-                <!--                        y={region.center[1]}-->
-                <!--                        text-anchor="middle"-->
-                <!--                        font-size="14px"-->
-                <!--                        font-weight="bold"-->
-                <!--                >-->
-                <!--                    {region.name}-->
-                <!--                </text>-->
             {/each}
         </g>
     </svg>
+
+    <!--    <svg id="legend" width="100%" height="50" style="margin-top: 10px;"></svg>-->
 
 </div>

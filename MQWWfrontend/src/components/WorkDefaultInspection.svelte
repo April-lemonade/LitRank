@@ -65,12 +65,11 @@
     <div class="flex flex-row">
         {#if pieData}
             <svg style="width: 100%;height: 100%">
-                <g transform="translate(100, 80)">
+                <g transform="translate(60, 80)">
                     {#each pieData as d, i}
                         <path class="pie-slice" d={arc(d)} fill={color(i)} on:click={()=>selectType(d)}></path>
                     {/each}
                 </g>
-
             </svg>
 
             <!-- Tooltip -->

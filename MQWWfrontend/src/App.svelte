@@ -17,6 +17,7 @@
 
     let width = window.innerWidth;
     let height = window.innerHeight;
+    let colorScale;
 
     let works = [];
     let allWorkIDs = [];
@@ -828,6 +829,53 @@
 
     }
 
+    function updateScale(scale) {
+        // console.log('scale', scale.domain())
+        colorScale = scale
+    }
+
+    $: if (colorScale) {
+        console.log("更新 scale");
+        const legendContainer = d3.select("#legend");
+        legendContainer.selectAll("*").remove(); // 清除之前的内容
+
+        const domain = colorScale.domain();
+        console.log("domain", domain);
+
+        const legendWidth = 250; // 图例总宽度
+        const legendHeight = 20; // 图例高度
+        const legendPadding = 10; // 图例与文本的间距
+
+        // 动态生成 ticks，确保 [0, 1] 也能完整显示
+        const ticks = domain[1] <= 1 ? [domain[0], domain[1]] : colorScale.ticks(Math.min(5, domain[1]));
+        const numTicks = ticks.length;
+
+        // 计算矩形宽度为总宽度的均分
+        const rectWidth = legendWidth / numTicks; // 均分宽度
+
+        // 绘制颜色块
+        legendContainer
+            .selectAll("rect")
+            .data(ticks)
+            .join("rect")
+            .attr("x", (d, i) => i * rectWidth) // 矩形紧密排列
+            .attr("y", 0)
+            .attr("width", rectWidth) // 动态宽度
+            .attr("height", legendHeight)
+            .attr("fill", (d) => colorScale(d));
+
+        // 添加文本
+        legendContainer
+            .selectAll("text")
+            .data(ticks)
+            .join("text")
+            .attr("x", (d, i) => i * rectWidth + rectWidth / 2) // 文本居中对齐
+            .attr("y", legendHeight + legendPadding)
+            .attr("text-anchor", "middle")
+            .attr("font-size", "12px")
+            .text((d) => d); // 保留两位小数以反映精确值
+    }
+
 </script>
 
 <div bind:clientWidth={width} class="w-full flex flex-col flex-none grow-0 shrink-0 relative"
@@ -923,6 +971,7 @@
                        class="range range-xs {changing?'range-secondary':'range-primary'}" step="1"
                        disabled={changing}/>
             {/each}-->
+            <svg id="legend" width="100%" height="50" style="margin-top: 20px;"/>
         </div>
         <div class="flex-none basis-3/5 max-w-[calc(60%)] border border-slate-300 p-4 rounded-md flex flex-col gap-4 grow-0"
              style="max-width: 60%">
@@ -1006,7 +1055,7 @@
 
             <div style="height: 100%">
                 <MainCharts {poetRank} {rank} selectContent={selectContent} {clear} selectedPoetID={currentPoet}
-                            selectedWorkID={currentWork}/>
+                            selectedWorkID={currentWork} {updateScale}/>
             </div>
 
         </div>
@@ -1054,7 +1103,7 @@
                             </div>
                         {/if}
                         {#if currentWork === -1 && currentPoet === -1}
-                            <div style="min-height: 20vh">
+                            <div style="min-height: 5vh">
                                 <SexMap width={'100%'} height={'100%'} {allPoetsIDs}></SexMap>
                             </div>
                         {/if}
