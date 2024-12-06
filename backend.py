@@ -596,7 +596,7 @@ def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = De
         (poetRawData.index != 6461) & (poetRawData.index != 6467) & (poetRawData.index != 6468)]
     # 归一化
     for column in poetRawData.columns:
-        poetRawData[column] = poetRawData[column]/poetRawData[column].max()
+        poetRawData[column] = poetRawData[column] / poetRawData[column].max()
 
     participateWeight = float(poetPara[0])
     writeXZWeight = 0
@@ -1307,4 +1307,30 @@ def get_poet_poem_detail(poetID: str, db_connection: duckdb.DuckDBPyConnection =
     result_dict = sanitized_result.to_dict(orient='records')
     # result_list = result['poemID'].tolist()
     # print(result_list)
+    return result_dict
+
+
+@app.get('/getworkallpoetyear/{workID}')
+def getWorkAllPoetYear(workID):
+    db_connection = get_db_connection()
+    query = f'''SELECT DISTINCT wp1.poetID, p.NameHZ, p.StartYear, p.EndYear
+                    FROM workpoetlinks wp1
+                    JOIN poet p ON wp1.poetID = p.poetID
+                    WHERE wp1.workID = {workID}
+                    ORDER BY p.StartYear;'''
+    result = db_connection.query(query).df()
+    result['StartYear'] = np.where(
+        result['StartYear'] == 0,  # 如果年份为0
+        'unknown',  # 替换为unknown
+        result['StartYear']  # 否则保持原值
+    )
+
+    result['EndYear'] = np.where(
+        result['EndYear'] == 0,  # 如果年份为0
+        'unknown',  # 替换为unknown
+        result['EndYear']  # 否则保持原值
+    )
+    filtered_result = result[(result['StartYear'] != 'unknown') | (result['EndYear'] != 'unknown')]
+    filtered_result['IDName'] = filtered_result['poetID'].astype(str) + " - " + filtered_result['NameHZ']
+    result_dict = filtered_result.to_dict(orient='records')
     return result_dict

@@ -75,7 +75,7 @@
         {para: 'Poet popularity weight', weight: 1}
     ];
 
-    const workReferenceField = ['DateCycleHZ', 'DateEmperorHZ', 'DateDynastyHZ']
+    const workReferenceField = ['DateCycleHZ', 'DateEmperorHZ', 'DateDynastyHZ', 'PubStartYear', 'PubEndYear']
     const poetReferenceField = ['MainWorks', 'LifeSpan', 'StartYear', 'EndYear', 'EthnicGroup']
 
     let currentWork = -1;
@@ -124,7 +124,9 @@
                     .then(response => response.json())  // 解析JSON格式的响应体
                     .then(result => {
                         rank = result.data;  // 将结果赋值给 rank
+                        rank = rank.filter(d => d.workDetail.TitleHZ)
                         console.log("workRank", rank);
+                        rank.forEach(d => console.log(d.workDetail.TitleHZ));
                         importanceSelected();
                     })
                     .catch(error => {
@@ -621,6 +623,25 @@
                             // console.log(extractedData)
                             relatedContent = {
                                 title: 'Reference according to known date',
+                                content: extractedData
+                            }
+                            // console.log(relatedContent)
+                        })
+                } else {
+                    fetch(`${BASE_URL}/getworkallpoetyear/${currentWork}`)
+                        .then(response => response.json())
+                        .then(yearData => {
+                            console.log('yearData', yearData)
+                            let extractedData = yearData
+                                .map((data, index) => {
+                                    return {
+                                        label: data.IDName,
+                                        value: `${data.StartYear}-${data.EndYear}`
+                                    }
+                                })
+                            // console.log(extractedData)
+                            relatedContent = {
+                                title: 'Reference according to known poet date',
                                 content: extractedData
                             }
                             // console.log(relatedContent)
