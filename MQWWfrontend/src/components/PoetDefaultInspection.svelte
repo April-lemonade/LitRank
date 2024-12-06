@@ -46,7 +46,8 @@
                             group: poet.poetID,
                             name: poet.NameHZ || `Poet ${poet.poetID}`,
                             sex: poet.Sex,
-                            relation: poet.relation
+                            relation: poet.relation,
+                            role: poet.role
                         });
                     }
 
@@ -227,7 +228,8 @@
                 .style('display', 'block')
                 .html(`
             <strong>Name:</strong> ${d.name}<br>
-
+            <strong>Role:</strong>${d.role}<br>
+            <strong>Relation to Main Author:</strong> ${d.relation || 'unknown'}<br>
         `)
                 .style('left', `${leftPosition}px`)
                 .style('top', `${event.pageY + 10}px`);
@@ -254,14 +256,14 @@
                     .style('top', `${event.pageY + 10}px`);
             } else {
                 // Poet 和 Poet 之间的链接
-                tooltip
-                    .style('display', 'block')
-                    .html(`
-            <strong>Poet:</strong> ${d.target.name}<br>
-            <strong>Relation to Main Author:</strong> ${d.relation || 'N/A'}<br>
-        `)
-                    .style('left', `${leftPosition}px`)
-                    .style('top', `${event.pageY + 10}px`);
+        //         tooltip
+                //             .style('display', 'block')
+                //             .html(`
+                //     <strong>Poet:</strong> ${d.target.name}<br>
+                //     <strong>Relation to Main Author:</strong> ${d.relation || 'N/A'}<br>
+                // `)
+                //             .style('left', `${leftPosition}px`)
+                //             .style('top', `${event.pageY + 10}px`);
             }
         }
 
