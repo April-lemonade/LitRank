@@ -824,7 +824,7 @@
         }, 10);
     }}>
         <text x="50%" y="98%" text-anchor="middle" font-size="12px">Publication Year</text>
-        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Work Popularity</text>
+        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Collection Popularity</text>
 
         <g id="unknownWorkData">
             {#each unknownWorkData as d}
@@ -883,8 +883,8 @@
             if (!isMouseInSVG) hideTooltip();
         }, 10); // 100ms 延迟
     }}>
-        <text x="50%" y="100%" text-anchor="middle" font-size="12px">Poet Start Year</text>
-        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Poet Popularity</text>
+        <text x="50%" y="100%" text-anchor="middle" font-size="12px">Writer Birth Year</text>
+        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Writer Popularity</text>
         <g id="unknownPoetData">
             {#each unknownPoetData as d}
                 <circle

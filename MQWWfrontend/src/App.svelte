@@ -951,7 +951,7 @@
                 <WorkYearDistribution width={'50%'} height={'70%'} {BASE_URL} onBrushed={handleBrushed} {changing}/>
             </div>
             <h2 class="text-lg">Popularity Parameters</h2>-->
-            <h3>Work</h3>
+            <h3>Collection</h3>
             <!--            <div style="height: 15vh" class="w-full flex">
                             <WorkBook {workPara} width={'30%'} height={'100%'} counts={[2,2,2,2]}></WorkBook>
                         </div>-->
@@ -965,7 +965,7 @@
                        class="range range-xs  {changing?'range-secondary':''}" step="1"
                        disabled={changing}/>
             {/each}
-            <h3>Poet</h3>
+            <h3>Writer</h3>
             <!--<div style="height: 10vh" class="w-full flex">
                 <PoetBlock {poetPara} width={'100%'} height={'100%'} counts={[1,1,1,1,1]}></PoetBlock>
             </div>-->
@@ -992,7 +992,7 @@
                        class="range range-xs {changing?'range-secondary':'range-primary'}" step="1"
                        disabled={changing}/>
             {/each}-->
-            <svg id="legend" width="100%" height="50" style="margin-top: 20px;"/>
+            <svg id="legend" width="100%" height="50" style="margin-top: 120%;"/>
         </div>
         <div class="flex-none basis-3/5 max-w-[calc(60%)] border border-slate-300 p-4 rounded-md flex flex-col gap-4 grow-0"
              style="max-width: 60%">
@@ -1069,8 +1069,8 @@
                 {/if}
             </div>
             -->
-            <div class="flex justify-between">
-                <h1 class="text-xl">Distribution View</h1>
+            <div class="flex justify-between ">
+                <h1 class="text-xl" style="overflow-y: hidden">Distribution View</h1>
                 <button class="btn btn-xs" onclick={clearSelection}>clear</button>
             </div>
 
@@ -1086,8 +1086,9 @@
 
             <div class="join join-vertical w-full">
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="radio" name="my-accordion-4" checked="{currentWork===-1}"/>
-                    <div class="collapse-title text-xl font-medium">Work</div>
+                    <input type="{currentWork===-1&&currentPoet===-1?'checkbox':'radio'}" name="my-accordion-4"
+                           checked="{currentWork===-1}"/>
+                    <div class="collapse-title text-xl font-medium">Collection</div>
                     <div class="collapse-content" style="max-height: 60vh;overflow: scroll;min-height: 0vh">
                         {#if currentWork === -1 && currentPoet === -1}
                             <div style="min-height: 20vh;">
@@ -1113,9 +1114,9 @@
                     </div>
                 </div>
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="radio" name="my-accordion-4"
+                    <input type="{currentWork===-1&&currentPoet===-1?'checkbox':'radio'}" name="my-accordion-4"
                            checked="{currentPoet !== -1 && currentPoem === -1 || currentWork===-1}"/>
-                    <div class="collapse-title text-xl font-medium">Poet</div>
+                    <div class="collapse-title text-xl font-medium">Writer</div>
                     <div class="collapse-content" style="max-height: 60vh;overflow: scroll;min-height: 0vh">
                         {#if currentWork !== -1 && currentPoet === -1}
                             <div style="min-height: 20vh">
@@ -1146,9 +1147,9 @@
                     </div>
                 </div>
                 <div class="collapse collapse-arrow join-item border-base-300 border">
-                    <input type="radio" name="my-accordion-4"
+                    <input type="{currentWork===-1&&currentPoet===-1?'checkbox':'radio'}" name="my-accordion-4"
                            checked="{currentPoem !== -1 || currentWork===-1}"/>
-                    <div class="collapse-title text-xl font-medium">Poem</div>
+                    <div class="collapse-title text-xl font-medium">Work</div>
                     <div class="collapse-content"
                          style="max-height: 60vh;overflow: scroll;min-height: 0vh">
                         {#if displayPoems.length === 0}
@@ -1160,9 +1161,9 @@
                             <table style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #ddd;">
                                 <thead>
                                 <tr>
+                                    <th class="tableHead">Collection</th>
+                                    <th class="tableHead">Writer</th>
                                     <th class="tableHead">Work</th>
-                                    <th class="tableHead">Poet</th>
-                                    <th class="tableHead">Poem</th>
                                 </tr>
                                 </thead>
                                 <tbody>
