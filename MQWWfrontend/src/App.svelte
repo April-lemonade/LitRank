@@ -14,6 +14,8 @@
     import PoetWork from "./components/PoetWork.svelte";
     import PoemBlock from "./components/PoemBlock.svelte";
     import MainCharts from "./components/MainCharts.svelte";
+    import MissingBar from "./components/MissingBar.svelte";
+    import PoetMissingBar from "./components/PoetMissingBar.svelte";
 
     let width = window.innerWidth;
     let height = window.innerHeight;
@@ -29,6 +31,8 @@
     let selectedWorkPoet = [];
     let selectedWorkPoem = [];
 
+    let fullWorkRank = [];
+    let fullPoetRank = [];
     let rank = [];
     let poetRank = [];
     let poemRank = [];
@@ -85,6 +89,8 @@
     let currentWorkDetail = {};
     let currentPoetDetail = {};
     let currentPoemDetail = {};
+    let workUnknownCount;
+    let workStatsArray;
 
     function calculatePercentages(params, defaultPercentage) {
         currentWork = -1
@@ -119,14 +125,29 @@
             .then(response => response.json())  // 解析JSON格式的响应体
             .then(result => {
                 poetRank = result.data;  // 将结果赋值给 poetRank
-                console.log("poetRank", poetRank[1])
+                fullPoetRank = poetRank;
+                console.log("poetRank", poetRank);
                 fetch(`${BASE_URL}/workImportanceNew/${weights.join(',')}`)
                     .then(response => response.json())  // 解析JSON格式的响应体
                     .then(result => {
                         rank = result.data;  // 将结果赋值给 rank
                         rank = rank.filter(d => d.workDetail.TitleHZ)
+                        fullWorkRank = rank;
+                        let workCountStats = {};
+                        rank.forEach(item => {
+                            workUnknownCount = item.workCount.unknownCount;
+                            workCountStats[workUnknownCount] = (workCountStats[workUnknownCount] || 0) + 1;
+                        });
+
+                        // 转换为可用的数组格式
+                        workStatsArray = Object.entries(workCountStats).map(([unknownCount, count]) => ({
+                            unknownCount: Number(unknownCount),
+                            count
+                        }));
                         console.log("workRank", rank);
-                        rank.forEach(d => console.log(d.workDetail.TitleHZ));
+                        console.log("workStatsArray", workStatsArray);
+                        drawChart();
+                        // rank.forEach(d => console.log(d.workDetail.TitleHZ));
                         importanceSelected();
                     })
                     .catch(error => {
@@ -137,45 +158,49 @@
                 console.error('Error fetching poet importance data:', error);
             })
 
-        /* Promise.all([
-             fetch(`${BASE_URL}/workImportanceNew/${weights.join(',')}`)
-                 .then(response => response.json())  // 解析JSON格式的响应体
-                 .then(result => {
-                     rank = result.data;  // 将结果赋值给 rank
-                     console.log("rank", rank)
-                 })
-                 .catch(error => {
-                     console.error('Error fetching work importance data:', error);
-                 }),
-             fetch(`${BASE_URL}/poetImportanceNew/${poetWeights.join(',')}`)
-                 .then(response => response.json())  // 解析JSON格式的响应体
-                 .then(result => {
-                     poetRank = result.data;  // 将结果赋值给 poetRank
-                     console.log("poetRank", poetRank)
-                 })
-                 .catch(error => {
-                     console.error('Error fetching poet importance data:', error);
-                 })
-         ])
-             .then(() => {
-                 // 当 `workImportance` 和 `poetImportance` 都完成时，进行 `poemImportance` 的请求
-                 /!* return fetch(`${BASE_URL}/poemImportance/${poemWeights.join(',')}`)
-                      .then(response => response.json())
-                      .then(result => {
-                          poemRank = result.data;
-                          // console.log("poemRank", poemRank);
-                      })
-                      .catch(error => {
-                          console.error('Error fetching poem importance data:', error);
-                      });*!/
-             })
-             .then(() => {
-                 // 所有请求都完成后调用 `importanceSelected`
-                 importanceSelected();
-             })
-             .catch(error => {
-                 console.error('Error in fetching data:', error);
-             });*/
+    }
+
+
+    let workX, workY;
+    const chartHeight = 150;
+    const chartWidth = 200;
+
+    function drawChart() {
+        const margin = {top: 0, right: 0, bottom: 20, left: 20};
+        const width = 300 - margin.left - margin.right;
+        // const chartHeight = 150 - margin.top - margin.bottom;
+
+        // 清理已有的 SVG 内容
+        d3.select("#chart").selectAll("*").remove();
+
+        // 创建 SVG 容器
+        const svg = d3
+            .select("#workChart");
+
+        // 定义 x 和 y 轴的比例尺
+        workX = d3.scaleBand()
+            .domain(workStatsArray.map((d) => d.unknownCount)) // x 轴的类别为 unknownCount
+            .range([0, width])
+            .padding(0.2);
+
+        workY =
+            d3.scaleLinear()
+                .domain([0, d3.max(workStatsArray, (d) => d.count)]) // y 轴范围为 [0, 最大值]
+                .nice()
+                .range([chartHeight, 0]);
+
+        // 添加 x 轴
+        svg
+            .append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(workX).tickFormat((d) => `Unknown: ${d}`))
+            .selectAll("text")
+            .attr("transform", "rotate(-40)")
+            .style("text-anchor", "end");
+
+        // 添加 y 轴
+        svg.append("g").call(d3.axisLeft(workY));
+
     }
 
     async function importanceSelected() {
@@ -910,6 +935,31 @@
             .text((d) => d); // 保留两位小数以反映精确值
     }
 
+    let missingWorkCount = -1;
+    let missingPoetCount = -1;
+
+    function selectMissingWork(count) {
+        console.log(count);
+        if (count === missingWorkCount) {
+            rank = fullWorkRank;
+            missingWorkCount = -1;
+        } else {
+            rank = fullWorkRank.filter(item => item.workCount && item.workCount.unknownCount === count);
+            missingWorkCount = count;
+        }
+    }
+
+    function selectMissingPoet(count) {
+        console.log(count);
+        if (count === missingPoetCount) {
+            poetRank = fullPoetRank;
+            missingPoetCount = -1;
+        } else {
+            poetRank = fullPoetRank.filter(item => item.poetCount && item.poetCount.unknownCount === count);
+            missingPoetCount = count;
+        }
+    }
+
 </script>
 
 <div bind:clientWidth={width} class="w-full flex flex-col flex-none grow-0 shrink-0 relative"
@@ -964,7 +1014,7 @@
                 <WorkYearDistribution width={'50%'} height={'70%'} {BASE_URL} onBrushed={handleBrushed} {changing}/>
             </div>
             <h2 class="text-lg">Popularity Parameters</h2>-->
-            <h3>Collection</h3>
+            <h2 class="text">Collection</h2>
             <!--            <div style="height: 15vh" class="w-full flex">
                             <WorkBook {workPara} width={'30%'} height={'100%'} counts={[2,2,2,2]}></WorkBook>
                         </div>-->
@@ -978,7 +1028,7 @@
                        class="range range-xs  {changing?'range-secondary':''}" step="1"
                        disabled={changing}/>
             {/each}
-            <h3>Writer</h3>
+            <h2 class="text">Writer</h2>
             <!--<div style="height: 10vh" class="w-full flex">
                 <PoetBlock {poetPara} width={'100%'} height={'100%'} counts={[1,1,1,1,1]}></PoetBlock>
             </div>-->
@@ -1005,7 +1055,19 @@
                        class="range range-xs {changing?'range-secondary':'range-primary'}" step="1"
                        disabled={changing}/>
             {/each}-->
-            <svg id="legend" width="100%" height="50" style="margin-top: 120%;"/>
+            <!--<svg id="workChart">
+                {#each workStatsArray as item}
+                    <rect x={workX(item.unknownCount)} y={workY(item.count)} width={workX.bandwidth()} fill="steelblue"
+                          height={chartHeight-workY(item.count)}></rect>
+                {/each}
+            </svg>-->
+            <h2 class="text-lg">Statistics of Missing Fields</h2>
+            <h2 class="text">Collection</h2>
+            <MissingBar rankData={fullWorkRank} width="100%" height="5%" {missingWorkCount}
+                        select={selectMissingWork}></MissingBar>
+            <h2 class="text">Writer</h2>
+            <PoetMissingBar rankData={fullPoetRank} width="100%" height="5%" {missingPoetCount}
+                            select={selectMissingPoet}></PoetMissingBar>
         </div>
         <div class="flex-none basis-3/5 max-w-[calc(60%)] border border-slate-300 p-4 rounded-md flex flex-col gap-4 grow-0"
              style="max-width: 60%">
@@ -1082,7 +1144,7 @@
                 {/if}
             </div>
             -->
-            <div class="flex justify-between ">
+            <div class="flex justify-between">
                 <h1 class="text-xl" style="overflow-y: hidden">Distribution View</h1>
                 <button class="btn btn-xs" onclick={clearSelection}>clear</button>
             </div>
@@ -1090,6 +1152,7 @@
             <div style="height: 100%">
                 <MainCharts {poetRank} {rank} selectContent={selectContent} {clear} selectedPoetID={currentPoet}
                             selectedWorkID={currentWork} {updateScale}/>
+                <svg id="legend" width="100%" height="50" style="margin-top: -5%;margin-left: 3%"/>
             </div>
 
         </div>

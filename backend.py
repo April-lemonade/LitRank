@@ -387,14 +387,24 @@ def calWorkImportanceNew(workPara, db_connection: duckdb.DuckDBPyConnection = De
 
     # 整合结果
     combined_results = []
+    specific_fields_to_check_zero = ['PubEndYear', 'PubStartYear']  # 检查值为 0 的特定字段
     for workID, row in normalized_importance_sorted.iterrows():
         work_detail = {}
+        unknown_count = 0  # 用于统计属性值为 "unknown" 的数量
         if workID in workDetails.index:
             work_detail = workDetails.loc[workID].to_dict()
+            # 统计值为 "unknown" 的字段数量
+            unknown_count += sum(1 for value in work_detail.values() if value == "unknown")
+            # 统计 work_detail 中值为 "unknown" 的属性数量
+            unknown_count = sum(1 for value in work_detail.values() if value == "unknown")
 
         combined = {
             'workID': int(workID),
-            'workCount': row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+            # 'workCount': row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+            'workCount': {
+                **row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+                'unknownCount': unknown_count  # 添加 unknown 属性数量统计
+            },
             'workDetail': work_detail
         }
         combined_results.append(combined)
@@ -696,12 +706,18 @@ def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = De
     combined_results = []
     for poetID, row in poet_min_max_sorted.iterrows():
         poet_detail = {}
+        unknown_count = 0  # 用于统计属性值为 "unknown" 的数量
         if poetID in poetDetails.index:
             poet_detail = poetDetails.loc[poetID].to_dict()
+            unknown_count += sum(1 for value in poet_detail.values() if value == 'unknown')
 
         combined = {
             'poetID': int(poetID),
-            'poetCount': row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+            # 'poetCount': row.dropna().to_dict(),  # 这里使用 dropna() 移除任何NaN值，确保所有值都是JSON兼容的
+            'poetCount': {
+                **row.dropna().to_dict(),
+                'unknownCount': unknown_count
+            },
             'poetDetail': poet_detail
         }
         combined_results.append(combined)
