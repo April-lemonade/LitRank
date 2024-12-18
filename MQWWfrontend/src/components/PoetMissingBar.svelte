@@ -29,6 +29,7 @@
 
     function drawChart() {
         const svg = d3.select("#svg1");
+        svg.selectAll("*").remove();
         const margin = {top: 20, right: 10, bottom: 40, left: 30}; // 设置边距
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
@@ -53,10 +54,8 @@
             .attr("transform", `translate(0,${innerHeight})`)
             .call(
                 d3.axisBottom(xScale)
-                    .tickPadding(10) // 调整刻度与轴之间的间距
             )
             .selectAll("text")
-            .attr("transform", "rotate(-40)")
             .style("text-anchor", "end");
 
         // 添加 y 轴
