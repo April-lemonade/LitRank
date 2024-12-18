@@ -61,7 +61,7 @@
 </script>
 <div bind:clientHeight={height} bind:clientWidth={width} style="width: {pixelWidth};height:{pixelHeight}"
      class="flex flex-col flex-none grow-0">
-    <h3 class="text-lg">Work type Distribution</h3>
+<!--    <h3 class="text-lg">Work type Distribution</h3>-->
     <div class="flex flex-row">
         {#if pieData}
             <svg style="width: 100%;height: 100%">

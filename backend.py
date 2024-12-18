@@ -358,15 +358,16 @@ def calWorkImportanceNew(workPara, db_connection: duckdb.DuckDBPyConnection = De
     workpoet = workpoetlinks.copy()
     workpoet['RoleWeight'] = workpoet['role'].map(role_weights)
     workpoet = workpoet.merge(poetRankNew, on='poetID', how='outer')
-    workpoet['WorkImportance'] = workpoet['RoleWeight'] * workpoet['totalWeight']
+    workpoet['WorkImportance'] = workpoet['RoleWeight'] * workpoet['ln_normalized_totalWeight']
     work_importance_total = workpoet.groupby('workID')['WorkImportance'].sum()
     max_importance = work_importance_total.max()
-    normalized_importance = work_importance_total / max_importance
+    normalized_importance = work_importance_total / 1
     normalized_importance_df = normalized_importance.reset_index()
     raw_importance = normalized_importance_df.copy()
     normalized_importance_df = normalized_importance_df.merge(work, on='workID', how='outer')[
         ['workID', 'TitleHZ', 'PubStartYear', 'WorkImportance']]
-    normalized_importance_df['WorkImportance'] = np.log(normalized_importance_df['WorkImportance'] + 0.01)
+    normalized_importance_df['WorkImportance'] = np.log(normalized_importance_df['WorkImportance'] + 1) / np.log(
+        max_importance + 1)
 
     normalized_importance_sorted = normalized_importance_df.sort_values('WorkImportance', ascending=False)
     normalized_importance_sorted.set_index('workID', inplace=True)
@@ -617,7 +618,8 @@ def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = De
     poet_min_max_sorted = poet_min_max.sort_values('totalWeight', ascending=False)
     max_importance = poet_min_max_sorted['totalWeight'].max()
     poet_min_max_sorted['normalized_totalWeight'] = poet_min_max_sorted['totalWeight'] / max_importance
-    poet_min_max_sorted['ln_normalized_totalWeight'] = np.log(poet_min_max_sorted['normalized_totalWeight'] + 0.01)
+    poet_min_max_sorted['ln_normalized_totalWeight'] = np.log(
+        poet_min_max_sorted['normalized_totalWeight'] + 1) / np.log(1 + max_importance)
 
     global poetRankNew
     poetRankNew = poet_min_max_sorted.copy()

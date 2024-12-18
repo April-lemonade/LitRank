@@ -338,6 +338,19 @@
             currentWorkDetail = rank.find(item => item.workID === currentWork)?.workDetail;
             currentWorkDetail = Object.fromEntries(
                 Object.entries(currentWorkDetail).sort(([keyA, valueA], [keyB, valueB]) => {
+
+                    // 特殊规则：PubStartYear 或 PubEndYear 的值为 0，优先排序到最前
+                    const isSpecialKeyA = (keyA === "PubStartYear" || keyA === "PubEndYear") && valueA === 0;
+                    const isSpecialKeyB = (keyB === "PubStartYear" || keyB === "PubEndYear") && valueB === 0;
+
+                    if (isSpecialKeyA && isSpecialKeyB) {
+                        return 0; // 两者都符合特殊规则，顺序不变
+                    } else if (isSpecialKeyA) {
+                        return -1; // A 符合特殊规则，排在前面
+                    } else if (isSpecialKeyB) {
+                        return 1; // B 符合特殊规则，排在前面
+                    }
+
                     const isUnknownA = valueA === "unknown";
                     const isUnknownB = valueB === "unknown";
 
@@ -604,7 +617,7 @@
                     content: extractedData
                 }
                 console.log(relatedContent)
-            } else if (label === 'DateCycleHZ' || label === 'DateXF' || label === 'DateCycleHZ' || label === 'DateEmperorHZ' || label === 'DateDynastyHZ') {
+            } else if (label === 'DateCycleHZ' || label === 'DateXF' || label === 'DateCycleHZ' || label === 'DateEmperorHZ' || label === 'DateDynastyHZ' || label === 'PubStartYear' || label === 'PubEndYear') {
                 if (currentWorkDetail.PubStartYear !== 0 || currentWorkDetail.PubEndYear !== 0) {
                     let years = [currentWorkDetail.PubStartYear, currentWorkDetail.PubEndYear]
                     years.filter(year => year !== 0)
@@ -925,7 +938,7 @@
         <span class="loading loading-spinner loading-lg absolute left-1/2" style="top: 50vh"></span>
     </div>
     <div class="navbar bg-base-300" style="width: 100vw">
-        <button class="btn btn-ghost text-xl bar">MQWW</button>
+        <button class="btn btn-ghost text-xl bar">LitRank</button>
     </div>
     <div class="flex flex-row gap-2 w-full p-4 flex-none" style="max-width: 100vw">
         <div class="basis-1/5 border border-slate-300 flex flex-col gap-4 p-4 rounded-md flex-none"
@@ -945,7 +958,7 @@
                 </svg>
             </label>-->
 
-            <h2 class="text-lg">Relative Contributions</h2>
+            <h2 class="text-lg">Relative Weights</h2>
             <!--<h2 class="text-lg">Time Period</h2>
             <div class="barSelect">
                 <WorkYearDistribution width={'50%'} height={'70%'} {BASE_URL} onBrushed={handleBrushed} {changing}/>
@@ -1097,7 +1110,8 @@
                         {:else if currentWork !== -1 && currentPoet === -1 }
                             <div class="flex flex-col gap-2" style="min-height: 20vh">
                                 {#each Object.entries(currentWorkDetail) as [label, value]}
-                                    {#if value === 'unknown' && workReferenceField.includes(label)}
+                                    {#if (value === 'unknown' && workReferenceField.includes(label)) || (value === 0 && (label === 'PubStartYear' || label === 'PubEnd' +
+                                        'Year'))}
                                         <button class="btn"
                                                 onclick={()=>selectField(label,'work')}>{label}：{value}</button>
                                     {:else}

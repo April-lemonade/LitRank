@@ -60,7 +60,17 @@
                 });
 
                 const validNodes = nodes.filter(node => node.relation !== null && node.group !== 'work');
-                console.log(validNodes)
+                // 对 validNodes 按 relation 排序，将非 suspicious 的关系排在前面
+                validNodes.sort((a, b) => {
+                    if (a.relation === 'suspicious' && b.relation !== 'suspicious') {
+                        return 1; // a 在后
+                    } else if (a.relation !== 'suspicious' && b.relation === 'suspicious') {
+                        return -1; // b 在后
+                    } else {
+                        return 0; // 顺序不变
+                    }
+                });
+                // console.log(validNodes)
                 for (let i = 0; i < validNodes.length - 1; i++) {
                     const source = validNodes[i];
                     const target = validNodes[i + 1];
@@ -256,7 +266,7 @@
                     .style('top', `${event.pageY + 10}px`);
             } else {
                 // Poet 和 Poet 之间的链接
-        //         tooltip
+                //         tooltip
                 //             .style('display', 'block')
                 //             .html(`
                 //     <strong>Poet:</strong> ${d.target.name}<br>
