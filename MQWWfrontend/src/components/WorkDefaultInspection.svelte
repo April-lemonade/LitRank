@@ -21,6 +21,10 @@
     let pie = d3.pie().value(d => d.value);
     let arc = d3.arc().innerRadius(0).outerRadius(50);
 
+    $:if (width&&height){
+        console.log(width,height)
+    }
+
     // 定义 tooltip
     let tooltip;
     onMount(() => {
@@ -59,7 +63,7 @@
         if (selectWorkType) selectWorkType({data});
     }
 </script>
-<div bind:clientHeight={height} bind:clientWidth={width} style="width: {pixelWidth};height:{pixelHeight}"
+<div bind:clientHeight={height} bind:clientWidth={width}
      class="flex flex-col flex-none grow-0">
 <!--    <h3 class="text-lg">Work type Distribution</h3>-->
     <div class="flex flex-row">

@@ -234,14 +234,24 @@
     }
 
     function calculatePieData() {
+        console.log('pieData', pieData)
         pie = d3.pie().value(d => d.value);
         arc = d3.arc().innerRadius(0).outerRadius(50);
+        let worktypeCounts
+        if (selectedWork.length === 0) {
+            worktypeCounts = rank.reduce((acc, item) => {
+                const worktype = item.workDetail.worktype;
+                acc[worktype] = (acc[worktype] || 0) + 1;
+                return acc;
+            }, {});
+        } else {
+            worktypeCounts = rank.reduce((acc, item) => {
+                const worktype = item.workDetail.worktype;
+                acc[worktype] = (acc[worktype] || 0) + 1;
+                return acc;
+            }, {});
+        }
 
-        const worktypeCounts = selectedWork.reduce((acc, item) => {
-            const worktype = item.workDetail.worktype;
-            acc[worktype] = (acc[worktype] || 0) + 1;
-            return acc;
-        }, {});
 
         pieData = pie(Object.entries(worktypeCounts).map(([type, count]) => ({
             label: type,
@@ -885,7 +895,11 @@
             displayPoems = [];
             displayPoemsDetail = {};
         }
-
+        missingPoetCount = -1;
+        missingWorkCount = -1;
+        poetRank = fullPoetRank;
+        rank = fullWorkRank;
+        calculatePieData();
     }
 
     function updateScale(scale) {
@@ -939,14 +953,19 @@
     let missingPoetCount = -1;
 
     function selectMissingWork(count) {
-        console.log(count);
+        // console.log(count);
         if (count === missingWorkCount) {
             rank = fullWorkRank;
             missingWorkCount = -1;
         } else {
             rank = fullWorkRank.filter(item => item.workCount && item.workCount.unknownCount === count);
             missingWorkCount = count;
+            missingPoetCount = -1;
+            poetRank = fullPoetRank;
         }
+        calculatePieData();
+        currentWork = -1;
+        currentPoet = -1;
     }
 
     function selectMissingPoet(count) {
@@ -957,7 +976,11 @@
         } else {
             poetRank = fullPoetRank.filter(item => item.poetCount && item.poetCount.unknownCount === count);
             missingPoetCount = count;
+            missingWorkCount = -1;
+            rank = fullWorkRank;
         }
+        currentWork = -1;
+        currentPoet = -1;
     }
 
 </script>
@@ -1167,7 +1190,7 @@
                     <div class="collapse-title text-xl font-medium">Collection</div>
                     <div class="collapse-content" style="max-height: 60vh;overflow: scroll;min-height: 0vh">
                         {#if currentWork === -1 && currentPoet === -1}
-                            <div style="min-height: 20vh;">
+                            <div style="min-height: 20vh">
                                 <WorkDefaultInspection width={'100%'} height={'100%'} {pieData}></WorkDefaultInspection>
                             </div>
                         {:else if currentWork !== -1 && currentPoet === -1 }

@@ -211,6 +211,15 @@
                 })
             if (selectContent) selectContent({work: selectedWorkID, poet: selectedPoetID})
         }
+
+        if (selectedWorkID === -1 && selectedPoetID === -1) {
+            heighlightWork = [];
+            heighlightPoet = [];
+            const connectionContainer = d3.select("#connections");
+            connectionContainer?.selectAll("line").remove(); // 清除旧连线
+            connectionContainer.selectAll("path").remove();
+        }
+
     }
 
     function selectWork(data) {
@@ -711,15 +720,15 @@
             };
 
 
-/*            connectionContainer
-                .append("line")
-                .attr("x1", poetCoords.x + poetSvgOffset.x)
-                .attr("y1", poetCoords.y + poetSvgOffset.y)
-                .attr("x2", regionCenter[0] + regionSvgOffset.x)
-                .attr("y2", regionCenter[1] + regionSvgOffset.y)
-                .attr("stroke", "orange")
-                .attr("stroke-width", 1.5)
-                .attr("stroke-dasharray", "4 2");*/
+            /*            connectionContainer
+                            .append("line")
+                            .attr("x1", poetCoords.x + poetSvgOffset.x)
+                            .attr("y1", poetCoords.y + poetSvgOffset.y)
+                            .attr("x2", regionCenter[0] + regionSvgOffset.x)
+                            .attr("y2", regionCenter[1] + regionSvgOffset.y)
+                            .attr("stroke", "orange")
+                            .attr("stroke-width", 1.5)
+                            .attr("stroke-dasharray", "4 2");*/
 
             const startX = poetCoords.x + poetSvgOffset.x;
             const startY = poetCoords.y + poetSvgOffset.y;
@@ -824,7 +833,8 @@
         }, 10);
     }}>
         <text x="50%" y="98%" text-anchor="middle" font-size="12px">Publication Year</text>
-        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Collection Popularity</text>
+        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Collection Popularity
+        </text>
 
         <g id="unknownWorkData">
             {#each unknownWorkData as d}
@@ -860,7 +870,7 @@
                         cy={workTransform.yScale(d.WorkImportance)}
                         r="3"
                         fill={d.overlapping ? "darkblue" : "steelblue"}
-                        fill-opacity={heighlightWork.length === 0 || heighlightWork.includes(d.workID) ? 1 : 0.1}
+
                         opacity={selectedPoetID !== -1 && !heighlightWork.includes(d.workID) ? 0 : 1}
                         pointer-events={selectedPoetID !== -1 && !heighlightWork.includes(d.workID) ? "none" : "auto"}
                         filter={heighlightWork.length === 0 || heighlightWork.includes(d.workID) ? "" : "grayscale(100%)"}
@@ -884,7 +894,8 @@
         }, 10); // 100ms 延迟
     }}>
         <text x="50%" y="100%" text-anchor="middle" font-size="12px">Writer Birth Year</text>
-        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Writer Popularity</text>
+        <text x="10%" y="5%" text-anchor="middle" transform="rotate(0, 20, 50)" font-size="12px">Writer Popularity
+        </text>
         <g id="unknownPoetData">
             {#each unknownPoetData as d}
                 <circle
@@ -916,7 +927,6 @@
                         cy={poetTransform.yScale(d.PoetImportance)}
                         r="3"
                         fill={d.overlapping ? "darkorange" : "orange"}
-                        fill-opacity={heighlightPoet.length === 0 || heighlightPoet.includes(d.poetID) ? 1 : 0.1}
                         opacity={selectedWorkID !== -1 && !heighlightPoet.includes(d.poetID) ? 0 : 1}
                         pointer-events={selectedWorkID !== -1 && !heighlightPoet.includes(d.poetID) ? "none" : "auto"}
                         filter={heighlightPoet.length === 0 || heighlightPoet.includes(d.poetID) ? "" : "grayscale(100%)"}
