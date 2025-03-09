@@ -393,7 +393,7 @@
 
     $: if (rank && poetRank && pixelWidth) {
         // 计算每个图表的高度
-        const numCharts = 3; // 当前有两个图表
+        const numCharts = 3;
         const chartHeight = pixelHeight / numCharts;
 
         hierarchyData = groupByRegion(poetRank);

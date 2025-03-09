@@ -631,7 +631,7 @@ def calPoetImportanceNew(poetPara, db_connection: duckdb.DuckDBPyConnection = De
     max_importance = poet_min_max_sorted['totalWeight'].max()
     poet_min_max_sorted['normalized_totalWeight'] = poet_min_max_sorted['totalWeight'] / max_importance
     poet_min_max_sorted['ln_normalized_totalWeight'] = np.log(
-        poet_min_max_sorted['normalized_totalWeight'] + 1) / np.log(1 + max_importance)
+        poet_min_max_sorted['totalWeight'] + 1) / np.log(1 + max_importance)
 
     global poetRankNew
     poetRankNew = poet_min_max_sorted.copy()

@@ -51,8 +51,10 @@
         "#0F3557"  // 最深蓝
     ]);
 
-    let changing = true
+    let changing = true;
     let dialogTitle;
+    const types = ['ALL', '總集', '合刻', '別集', '彈詞', '詩話', '傳'];
+    let currentType = 0;
 
     function handleResize() {
         width = window.innerWidth;
@@ -132,6 +134,7 @@
                     .then(result => {
                         rank = result.data;  // 将结果赋值给 rank
                         rank = rank.filter(d => d.workDetail.TitleHZ)
+                        console.log("rank", rank)
                         fullWorkRank = rank;
                         let workCountStats = {};
                         rank.forEach(item => {
@@ -872,8 +875,23 @@
 
             scrollbarWidth = div.offsetWidth - div.clientWidth;
             div.remove();
+            updateWindowSize();  // 初始值
+            window.addEventListener('resize', updateWindowSize);
+
+            // 清理事件监听器
+            onDestroy(() => {
+                window.removeEventListener('resize', updateWindowSize);
+            });
         })
     })
+    let windowWidth = 0;
+    let windowHeight = 0;
+
+    // 监听窗口大小变化的函数
+    const updateWindowSize = () => {
+        windowWidth = window.innerWidth;
+        windowHeight = window.innerHeight;
+    };
 
     $: {
         if (changing) {
@@ -983,6 +1001,18 @@
         currentPoet = -1;
     }
 
+    function changeType(index) {
+        // console.log(currentType)
+        currentType = index;
+        if (currentType === 0) {
+            rank = fullWorkRank;
+        } else {
+            rank = fullWorkRank.filter(item => item.workDetail.worktype && item.workDetail.worktype === types[currentType])
+            console.log(types[currentType], rank)
+        }
+        // calculatePieData()
+    }
+
 </script>
 
 <div bind:clientWidth={width} class="w-full flex flex-col flex-none grow-0 shrink-0 relative"
@@ -1015,7 +1045,7 @@
     </div>
     <div class="flex flex-row gap-2 w-full p-4 flex-none" style="max-width: 100vw">
         <div class="basis-1/5 border border-slate-300 flex flex-col gap-4 p-4 rounded-md flex-none"
-             style="max-width: 19%">
+             style="max-width: 19%;max-height: 120vh">
             <h1 class="text-xl">Parameter View</h1>
             <!--<label class="input input-bordered flex items-center gap-2">
                 <input type="text" class="grow" placeholder="Search"/>
@@ -1041,7 +1071,16 @@
             <!--            <div style="height: 15vh" class="w-full flex">
                             <WorkBook {workPara} width={'30%'} height={'100%'} counts={[2,2,2,2]}></WorkBook>
                         </div>-->
+            <div role="tablist" class="tabs tabs-boxed tabs-xs">
+                {#each types as t,index}
+                    <a role="tab" class="tab {currentType==index?'tab-active':''}"
+                       onclick={()=>changeType(index)}>{t}</a>
+                {/each}
 
+                <!--                <a role="tab" class="tab tab-active">總集</a>-->
+                <!--                <a role="tab" class="tab">Tab 3</a>-->
+                <!--                <a role="tab" class="tab">Tab 3</a>-->
+            </div>
             {#each workPara.slice(0, 3) as item, index}
                 <div class="text-sm flex justify-between">
                     <div>{item.para} </div>
@@ -1093,7 +1132,7 @@
                             select={selectMissingPoet}></PoetMissingBar>
         </div>
         <div class="flex-none basis-3/5 max-w-[calc(60%)] border border-slate-300 p-4 rounded-md flex flex-col gap-4 grow-0"
-             style="max-width: 60%">
+             style="max-width: 60%;max-height: 120vh;">
             <!--
             <h1 class="text-xl">Distribution View</h1>
             <h2 class="text-lg">Work</h2>
@@ -1172,7 +1211,7 @@
                 <button class="btn btn-xs" onclick={clearSelection}>clear</button>
             </div>
 
-            <div style="height: 100%">
+            <div style="height: 100%;overflow: hidden">
                 <MainCharts {poetRank} {rank} selectContent={selectContent} {clear} selectedPoetID={currentPoet}
                             selectedWorkID={currentWork} {updateScale}/>
                 <svg id="legend" width="100%" height="50" style="margin-top: -5%;margin-left: 3%"/>
@@ -1180,7 +1219,7 @@
 
         </div>
         <div class="basis-1/5 border border-slate-300 p-4 rounded-md flex flex-none flex-col grow-0 shrink-0 gap-4"
-             style="max-width: 20%;min-height: 90vh;overflow: scroll;max-height: 100vh">
+             style="max-width: 20%;max-height: 120vh;overflow: scroll;">
             <h1 class="text-xl">Inspection View</h1>
 
             <div class="join join-vertical w-full">
@@ -1300,6 +1339,9 @@
 </div>
 
 <style>
+    *{
+        overflow: hidden;
+    }
 
     .barSelect {
         width: 100%;
@@ -1358,5 +1400,19 @@
 
     .range-secondary {
         --range-shdw: gray;
+    }
+
+    .tabs-xs :where(.tab) {
+        height: 1.25rem;
+        font-size: 0.7rem;
+        line-height: .75rem;
+        --tab-padding: 0.3rem;
+    }
+
+    .tabs-boxed :is(.tab-active, [aria-selected="true"]):not(.tab-disabled):not([disabled]), .tabs-boxed :is(input:checked) {
+        --tw-bg-opacity: 1;
+        background-color: black;
+        --tw-text-opacity: 1;
+        color: var(--fallback-pc, oklch(var(--pc) / var(--tw-text-opacity)));
     }
 </style>

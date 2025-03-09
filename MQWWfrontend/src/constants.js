@@ -1,7 +1,9 @@
 //backend
 import * as d3 from "d3";
 
-export const BASE_URL = 'http://localhost:8000';
+export const BASE_URL = import.meta.env.VITE_API_URL;
+
+// export const BASE_URL = 'http://localhost:8000';
 
 export const borderStyle = 'solid #D9D9D9 1px'
 
